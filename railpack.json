@@ -2,5 +2,8 @@
   "php": {
     "version": "8.2.x"
   },
-  "_comment": "Force fresh build to run preDeployCommand migrations"
+  "deploy": {
+    "startCommand": "bash docker-entrypoint.sh"
+  },
+  "_comment": "Use docker-entrypoint.sh to run migrations before starting the app"
 }
