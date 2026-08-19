@@ -24,7 +24,7 @@ return new class extends Migration
                 $table->boolean('is_staff')->default(false);
                 $table->boolean('is_active')->default(true);
                 $table->dateTime('date_joined');
-                $table->text('customer_url')->default('');
+                $table->string('customer_url', 255)->default('');
             });
         }
     }
