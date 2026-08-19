@@ -26,8 +26,8 @@ return new class extends Migration
             $table->string('mail')->default('');
             $table->string('description')->default('');
             $table->string('paymentType')->default('');
-            $table->longText('postdata')->default('{}');
-            $table->longText('response')->default('{}');
+            $table->longText('postdata')->nullable();
+            $table->longText('response')->nullable();
             $table->string('extAuthorization')->default('');
             $table->string('extErrorCode')->default('');
             $table->string('extCode')->default('');
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->string('state')->default('0');
             $table->dateTime('creationDate')->nullable();
             $table->dateTime('paymentDate')->nullable();
-            $table->longText('book')->default('{}');
+            $table->longText('book')->nullable();
             $table->string('invoiceName')->default('');
             $table->string('invoiceNit')->default('');
             $table->timestamp('updated_at')->nullable();
