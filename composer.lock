@@ -8456,7 +8456,7 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": ">=8.2.9,<8.3.0"
+        "php": ">=8.2.9"
     },
     "platform-dev": {},
     "plugin-api-version": "2.6.0"
