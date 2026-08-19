@@ -41,3 +41,14 @@ Route::post('/api/payments/{code}/enrollment-result', [CybersourceController::cl
 
 Route::get('/pay/{token}', [PaymentCheckoutController::class, 'show'])->name('payment.checkout.legacy');
 Route::post('/pay/{token}', [PaymentCheckoutController::class, 'submit'])->name('payment.checkout.submit.legacy');
+
+Route::get('/debug/cache-status', function () {
+    return [
+        'cache_store' => config('cache.default'),
+        'cache_table_exists' => \Illuminate\Support\Facades\Schema::hasTable('cache'),
+        'cache_table_count' => \Illuminate\Support\Facades\DB::table('cache')->count(),
+        'test_write' => \Illuminate\Support\Facades\Cache::put('debug_test', 'test_value', 60),
+        'test_read' => \Illuminate\Support\Facades\Cache::get('debug_test'),
+        'cache_prefix' => config('cache.prefix'),
+    ];
+});
