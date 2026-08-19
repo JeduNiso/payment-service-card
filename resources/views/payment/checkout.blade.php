@@ -545,6 +545,7 @@
             }
         }
     </style>
+    @endif
 </head>
 <body>
     <div class="layout">
@@ -824,6 +825,5 @@
         updateExpiryDisplay();
         if (cardCvvOutput) cardCvvOutput.textContent = '•••';
     </script>
-    @endif
 </body>
 </html>
