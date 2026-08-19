@@ -1,0 +1,94 @@
+Este archivo se creó como marcador de documento de Word para la explicación del servicio.
+
+Si necesitas un documento real en .docx con contenido editable, se recomienda generarlo desde Word o desde un procesador de documentos, ya que aquí no se puede producir un .docx nativo con formato real a través del editor de texto.
+
+------------------------------------------------------------
+SERVICIO DE PAGOS - EXPLICACIÓN FINAL
+------------------------------------------------------------
+
+Objetivo:
+Separar dos flujos de autenticación:
+
+1) Token de sesión de pago: opaco, de un solo uso y ligado a la sesión de pago.
+2) JWT de búsqueda: para consultar pagos por usuario autenticado, con expiración corta y sin necesidad de enviar username/password en cada petición.
+
+Arquitectura:
+
+- api/payment/session
+  - Genera un token opaco para la sesión de pago.
+  - Solo sirve para iniciar/consumir la compra.
+  - No debe reutilizarse.
+  - Se invalida al consumirse.
+
+- api/payment/search-token
+  - Valida username/password contra el usuario real de auth_user.
+  - Genera un JWT firmado con la APP_KEY.
+  - Se usa únicamente para consultar pagos.
+
+- api/payments/search
+  - Acepta JWT o credenciales directas.
+  - Busca pagos asociados al usuario autenticado.
+  - Admite filtros por rango de fechas y/o bookCode.
+
+Regla de negocio:
+
+- El token de sesión de pago es único y no reutilizable.
+- El JWT de búsqueda es reutilizable mientras esté vigente, pero solo autoriza consultar pagos de ese usuario.
+- El usuario real se valida contra la base de datos, no contra un valor fijo de configuración.
+
+Flujo recomendado:
+
+1. Cliente solicita el token de sesión usando username/password del usuario real.
+2. Sistema valida credenciales contra auth_user.
+3. Sistema genera un token opaco de sesión de pago, único uso.
+4. Cliente puede generar un JWT de búsqueda con las mismas credenciales.
+5. Cliente consulta pagos enviando el JWT o los datos de usuario.
+6. El servicio identifica el usuario por su id y retorna los pagos asociados.
+
+Ejemplo de curl:
+
+1) Obtener token de sesión de pago
+curl -X POST http://localhost:8000/api/payment/session \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "ABC123",
+    "amount": 150.5,
+    "currency": "BOB",
+    "username": "db-user",
+    "password": "db-pass"
+  }'
+
+2) Generar JWT de búsqueda
+curl -X POST http://localhost:8000/api/payment/search-token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "db-user",
+    "password": "db-pass"
+  }'
+
+3) Consultar pagos con JWT
+curl -X POST http://localhost:8000/api/payments/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "<jwt>",
+    "from_date": "2026-08-01",
+    "to_date": "2026-08-31"
+  }'
+
+4) Consultar pagos por bookCode
+curl -X POST http://localhost:8000/api/payments/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "<jwt>",
+    "bookCode": "BOOK-XYZ-789"
+  }'
+
+Notas:
+- El usuario real debe existir en auth_user.
+- La contraseña puede ser hash bcrypt o legacy en texto plano para compatibilidad.
+- El JWT usa APP_KEY como clave de firma.
+- El token de sesión de pago no se reutiliza y se invalida al consumir la sesión.
+
+------------------------------------------------------------
+FIN DEL DOCUMENTO
+------------------------------------------------------------
