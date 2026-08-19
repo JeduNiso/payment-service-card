@@ -3,6 +3,7 @@
 namespace App\Services\Payments;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 class PaymentSessionService
@@ -20,7 +21,10 @@ class PaymentSessionService
             ...$payload,
         ];
 
-        Cache::put($this->cacheKey($token), $session, $expiresAt);
+        $cacheKey = $this->cacheKey($token);
+        Log::info('Storing payment session', ['token' => $token, 'cacheKey' => $cacheKey, 'expiresAt' => $expiresAt]);
+        $result = Cache::put($cacheKey, $session, $expiresAt);
+        Log::info('Cache put result', ['token' => $token, 'result' => $result, 'cacheStore' => config('cache.default')]);
 
         return $token;
     }
@@ -44,7 +48,9 @@ class PaymentSessionService
         }
 
         $cacheKey = $this->cacheKey($token);
+        Log::info('Resolving payment session', ['token' => $token, 'cacheKey' => $cacheKey]);
         $payload = Cache::get($cacheKey);
+        Log::info('Cache get result', ['token' => $token, 'found' => $payload !== null, 'cacheStore' => config('cache.default')]);
 
         if (! is_array($payload)) {
             throw new InvalidArgumentException('The payment session is not available anymore.');
