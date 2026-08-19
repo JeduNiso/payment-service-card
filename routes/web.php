@@ -52,3 +52,26 @@ Route::get('/debug/cache-status', function () {
         'cache_prefix' => config('cache.prefix'),
     ];
 });
+
+Route::get('/debug/payment-session/{token}', function (string $token) {
+    $paymentSessionService = app(\App\Services\Payments\PaymentSessionService::class);
+
+    try {
+        $payment = $paymentSessionService->get($token);
+
+        return [
+            'found' => true,
+            'token' => $token,
+            'payment' => $payment,
+            'booking_code' => strtoupper($payment['code'] ?? ''),
+            'booking_amount' => (float) ($payment['amount'] ?? $payment['total_amount'] ?? 0),
+            'booking_currency' => $payment['currency'] ?? 'BOB',
+        ];
+    } catch (InvalidArgumentException $e) {
+        return [
+            'found' => false,
+            'token' => $token,
+            'error' => $e->getMessage(),
+        ];
+    }
+});
