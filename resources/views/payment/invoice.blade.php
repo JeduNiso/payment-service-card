@@ -34,7 +34,9 @@
         </div>
     </div>
 
-    <p class="lead-text">{{ __('payment.invoice.thanks') }}</p>
+    @unless ($autoRedirect ?? false)
+        <p class="lead-text">{{ __('payment.invoice.thanks') }}</p>
+    @endunless
 
     <div class="actions">
         @unless ($autoRedirect ?? false)
