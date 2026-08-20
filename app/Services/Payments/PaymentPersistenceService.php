@@ -130,6 +130,33 @@ class PaymentPersistenceService
         return $payment;
     }
 
+    /**
+     * Look up an already-persisted payment record for this code, regardless of its
+     * outcome (paid or error). Used to decide whether a code has already been used for
+     * a payment attempt, so a fresh session token should no longer be issued for it.
+     */
+    public function findByCode(string $code): ?Payment
+    {
+        $code = strtoupper(trim((string) $code));
+        if ($code === '') {
+            return null;
+        }
+
+        $table = (new Payment())->getTable();
+
+        return Payment::query()->where(function ($query) use ($code, $table) {
+            if (Schema::hasColumn($table, 'bookCode')) {
+                $query->where('bookCode', $code);
+            }
+            if (Schema::hasColumn($table, 'code')) {
+                $query->orWhere('code', $code);
+            }
+            if (Schema::hasColumn($table, 'payment_code')) {
+                $query->orWhere('payment_code', $code);
+            }
+        })->first();
+    }
+
     public function updateStatus(string $code, array $data): Payment
     {
         $code = strtoupper(trim((string) $code));
@@ -139,18 +166,7 @@ class PaymentPersistenceService
 
         $table = (new Payment())->getTable();
         $resolvedCode = $code;
-
-        $payment = Payment::query()->where(function ($query) use ($resolvedCode, $table) {
-            if (Schema::hasColumn($table, 'bookCode')) {
-                $query->where('bookCode', $resolvedCode);
-            }
-            if (Schema::hasColumn($table, 'code')) {
-                $query->orWhere('code', $resolvedCode);
-            }
-            if (Schema::hasColumn($table, 'payment_code')) {
-                $query->orWhere('payment_code', $resolvedCode);
-            }
-        })->first();
+        $payment = $this->findByCode($code);
 
         if (! $payment) {
             return $this->store([

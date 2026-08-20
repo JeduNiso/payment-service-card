@@ -48,7 +48,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PaymentTokenService::class, function () {
             return new PaymentTokenService(
                 app(PaymentSessionService::class),
-                app(PaymentRouterService::class)
+                app(PaymentRouterService::class),
+                app(PaymentPersistenceService::class)
             );
         });
 
