@@ -625,32 +625,54 @@
                     </div>
                 </div>
 
+                @php
+                    // Test card + billing data, only pre-filled when CHECKOUT_PREFILL_TEST_CARD=true
+                    // (local/staging convenience). In production this stays false so real
+                    // customers get a blank form and type their own card.
+                    $prefill = config('services.checkout.prefill_test_card')
+                        ? [
+                            'card_number' => '4000000000001000',
+                            'cardholder_name' => 'Roberto Jimenez',
+                            'expiry_month' => 12,
+                            'expiry_year' => 2028,
+                            'cvv' => '123',
+                            'billing_email' => 'cliente@example.com',
+                            'billing_first_name' => 'Roberto',
+                            'billing_last_name' => 'Jimenez',
+                            'billing_address1' => 'Calle Herber 123',
+                            'billing_locality' => 'La Paz',
+                            'billing_country' => 'BO',
+                        ]
+                        : [];
+                @endphp
                 <form method="POST" action="{{ url('/payments/' . rawurlencode($token)) }}">
                     @csrf
                     <div class="field">
                         <label for="card_number">Número de tarjeta</label>
-                        <input id="card_number" name="card_number" type="text" inputmode="numeric" maxlength="19" autocomplete="cc-number" placeholder="1234 5678 9012 3456" value="{{ old('card_number', '4000000000001000') }}" required>
+                        <input id="card_number" name="card_number" type="text" inputmode="numeric" maxlength="19" autocomplete="cc-number" placeholder="1234 5678 9012 3456" value="{{ old('card_number', $prefill['card_number'] ?? '') }}" required>
                     </div>
 
                     <div class="field">
                         <label for="cardholder_name">Nombre del titular</label>
-                        <input id="cardholder_name" name="cardholder_name" type="text" autocomplete="cc-name" placeholder="Nombre y apellido" value="{{ old('cardholder_name', 'Roberto Jimenez') }}" required>
+                        <input id="cardholder_name" name="cardholder_name" type="text" autocomplete="cc-name" placeholder="Nombre y apellido" value="{{ old('cardholder_name', $prefill['cardholder_name'] ?? '') }}" required>
                     </div>
 
                     <div class="field-group">
                         <div class="field">
                             <label for="expiry_month">Mes</label>
                             <select id="expiry_month" name="expiry_month" required>
+                                <option value="" @selected(old('expiry_month', $prefill['expiry_month'] ?? '') === '') disabled hidden>MM</option>
                                 @for ($month = 1; $month <= 12; $month++)
-                                    <option value="{{ $month }}" @selected(old('expiry_month', 12) == $month)>{{ str_pad($month, 2, '0', STR_PAD_LEFT) }}</option>
+                                    <option value="{{ $month }}" @selected(old('expiry_month', $prefill['expiry_month'] ?? '') == $month)>{{ str_pad($month, 2, '0', STR_PAD_LEFT) }}</option>
                                 @endfor
                             </select>
                         </div>
                         <div class="field">
                             <label for="expiry_year">Año</label>
                             <select id="expiry_year" name="expiry_year" required>
+                                <option value="" @selected(old('expiry_year', $prefill['expiry_year'] ?? '') === '') disabled hidden>AAAA</option>
                                 @for ($year = (int) date('Y'); $year <= (int) date('Y') + 14; $year++)
-                                    <option value="{{ $year }}" @selected(old('expiry_year', 2028) == $year)>{{ $year }}</option>
+                                    <option value="{{ $year }}" @selected(old('expiry_year', $prefill['expiry_year'] ?? '') == $year)>{{ $year }}</option>
                                 @endfor
                             </select>
                         </div>
@@ -659,38 +681,38 @@
                     <div class="field-group">
                         <div class="field">
                             <label for="cvv">CVV</label>
-                            <input id="cvv" name="cvv" type="password" inputmode="numeric" maxlength="4" autocomplete="cc-csc" placeholder="123" value="{{ old('cvv', '123') }}" required>
+                            <input id="cvv" name="cvv" type="password" inputmode="numeric" maxlength="4" autocomplete="cc-csc" placeholder="123" value="{{ old('cvv', $prefill['cvv'] ?? '') }}" required>
                         </div>
                         <div class="field">
                             <label for="billing_email">Correo electrónico</label>
-                            <input id="billing_email" name="billing_email" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com" value="{{ old('billing_email', 'cliente@example.com') }}" required>
+                            <input id="billing_email" name="billing_email" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com" value="{{ old('billing_email', $prefill['billing_email'] ?? '') }}" required>
                         </div>
                     </div>
 
                     <div class="field-group">
                         <div class="field">
                             <label for="billing_first_name">Nombre</label>
-                            <input id="billing_first_name" name="billing_first_name" type="text" value="{{ old('billing_first_name', 'Roberto') }}">
+                            <input id="billing_first_name" name="billing_first_name" type="text" value="{{ old('billing_first_name', $prefill['billing_first_name'] ?? '') }}">
                         </div>
                         <div class="field">
                             <label for="billing_last_name">Apellido</label>
-                            <input id="billing_last_name" name="billing_last_name" type="text" value="{{ old('billing_last_name', 'Jimenez') }}">
+                            <input id="billing_last_name" name="billing_last_name" type="text" value="{{ old('billing_last_name', $prefill['billing_last_name'] ?? '') }}">
                         </div>
                     </div>
 
                     <div class="field">
                         <label for="billing_address1">Dirección</label>
-                        <input id="billing_address1" name="billing_address1" type="text" value="{{ old('billing_address1', 'Calle Herber 123') }}">
+                        <input id="billing_address1" name="billing_address1" type="text" value="{{ old('billing_address1', $prefill['billing_address1'] ?? '') }}">
                     </div>
 
                     <div class="field-group">
                         <div class="field">
                             <label for="billing_locality">Ciudad</label>
-                            <input id="billing_locality" name="billing_locality" type="text" value="{{ old('billing_locality', 'La Paz') }}">
+                            <input id="billing_locality" name="billing_locality" type="text" value="{{ old('billing_locality', $prefill['billing_locality'] ?? '') }}">
                         </div>
                         <div class="field">
                             <label for="billing_country">País</label>
-                            <input id="billing_country" name="billing_country" type="text" maxlength="2" value="{{ old('billing_country', 'BO') }}">
+                            <input id="billing_country" name="billing_country" type="text" maxlength="2" value="{{ old('billing_country', $prefill['billing_country'] ?? '') }}">
                         </div>
                     </div>
 
@@ -748,10 +770,6 @@
             cardNumberOutput.textContent = visible;
 
             const brand = detectCardBrand(raw);
-            const brandLabel = document.querySelector('.meta-value');
-            if (brandLabel) {
-                brandLabel.textContent = brand;
-            }
             if (cardBrandLabel) {
                 cardBrandLabel.textContent = brand;
             }

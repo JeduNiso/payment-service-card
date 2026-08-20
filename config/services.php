@@ -35,6 +35,14 @@ return [
         ],
     ],
 
+    'checkout' => [
+        // When enabled, the hosted checkout form pre-fills a CyberSource test card
+        // and matching test billing data instead of loading blank. Meant for local/
+        // staging testing only — must stay disabled (default) in production so real
+        // customers see a blank form and type their own card.
+        'prefill_test_card' => env('CHECKOUT_PREFILL_TEST_CARD', false),
+    ],
+
     'cybersource' => [
         'merchant_id' => env('CYBERSOURCE_MERCHANT_ID'),
         'key_id' => env('CYBERSOURCE_KEY_ID'),
