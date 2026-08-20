@@ -36,7 +36,6 @@ class UserFactory extends Factory
                 'is_active' => true,
                 'date_joined' => now(),
                 'last_login' => null,
-                'customer_url' => '',
             ];
         }
 

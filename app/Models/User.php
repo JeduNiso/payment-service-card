@@ -32,7 +32,6 @@ class User extends Authenticatable
         'is_active',
         'date_joined',
         'last_login',
-        'customer_url',
         'notification_url',
         'merchant_notification_api_key',
     ];

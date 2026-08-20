@@ -545,7 +545,6 @@ class CybersourceController extends PaymentProviderController
         $service = app(PaymentPersistenceService::class);
         $customerUrl = $this->resolveCustomerUrl($paymentData);
         $userId = $paymentData['user_id'] ?? $paymentData['auth_user_id'] ?? $paymentData['customer_id'] ?? null;
-        $this->updateCustomerUrlForUser($customerUrl, $userId);
 
         $service->updateStatus(
             $code,
@@ -682,25 +681,17 @@ class CybersourceController extends PaymentProviderController
         }
 
         if ($userId !== null && $userId !== '') {
-            $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
-            $stored = DB::table($userTable)->where('id', (int) $userId)->value('customer_url');
-            if (is_string($stored)) {
-                $normalized = $this->normalizeCustomerUrl($stored);
-                if ($normalized !== null) {
-                    return $normalized;
-                }
+            $normalized = $this->normalizeCustomerUrl($this->resolveLastKnownCustomerUrlForUserId((int) $userId));
+            if ($normalized !== null) {
+                return $normalized;
             }
         }
 
         $emailCandidate = $paymentData['billing_email'] ?? $paymentData['email'] ?? null;
         if (is_string($emailCandidate) && trim($emailCandidate) !== '') {
-            $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
-            $storedByEmail = DB::table($userTable)
-                ->whereRaw('LOWER(email) = ?', [strtolower(trim($emailCandidate))])
-                ->value('customer_url');
-
-            if (is_string($storedByEmail)) {
-                $normalized = $this->normalizeCustomerUrl($storedByEmail);
+            $foundUserId = $this->resolveUserIdByEmail($emailCandidate);
+            if ($foundUserId !== null) {
+                $normalized = $this->normalizeCustomerUrl($this->resolveLastKnownCustomerUrlForUserId($foundUserId));
                 if ($normalized !== null) {
                     return $normalized;
                 }
@@ -713,8 +704,8 @@ class CybersourceController extends PaymentProviderController
     private function resolveHomeUrlFromCustomerUrl(array $paymentData): ?string
     {
         // An explicit redirect_url from /api/payments/session (urlToRedirect) always
-        // wins over the customer_url auto-resolved from the merchant's own record —
-        // it's what the caller asked for on this specific payment.
+        // wins over the customer_url resolved from a prior payment — it's what the
+        // caller asked for on this specific payment.
         $explicit = $paymentData['redirect_url'] ?? null;
         if (is_string($explicit)) {
             $normalized = $this->normalizeCustomerUrl($explicit);
@@ -723,50 +714,35 @@ class CybersourceController extends PaymentProviderController
             }
         }
 
-        $userId = $paymentData['user_id'] ?? $paymentData['auth_user_id'] ?? $paymentData['customer_id'] ?? null;
-
-        if (isset($paymentData['user']) && is_array($paymentData['user']) && isset($paymentData['user']['id'])) {
-            $userId = $paymentData['user']['id'] ?? $userId;
-        }
-
-        if ($userId !== null && $userId !== '') {
-            $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
-            $stored = DB::table($userTable)->where('id', (int) $userId)->value('customer_url');
-
-            $normalized = is_string($stored) ? $this->normalizeCustomerUrl($stored) : null;
-            if ($normalized !== null) {
-                return $normalized;
-            }
-        }
-
-        $emailCandidate = $paymentData['billing_email'] ?? $paymentData['email'] ?? null;
-        if (is_string($emailCandidate) && trim($emailCandidate) !== '') {
-            $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
-            $storedByEmail = DB::table($userTable)
-                ->whereRaw('LOWER(email) = ?', [strtolower(trim($emailCandidate))])
-                ->value('customer_url');
-
-            $normalized = is_string($storedByEmail) ? $this->normalizeCustomerUrl($storedByEmail) : null;
-            if ($normalized !== null) {
-                return $normalized;
-            }
-        }
-
         return $this->resolveCustomerUrl($paymentData);
     }
 
-    private function updateCustomerUrlForUser(?string $customerUrl, mixed $userId): void
+    /**
+     * customer_url lives on payment_user (one value per payment, not per user) — a
+     * payment made with urlToRedirect only ever affects that one payment's row, never
+     * every future payment for the same user. When the current payment doesn't carry
+     * its own customer_url/redirect_url, the best available default is whatever this
+     * user's most recent prior payment recorded — there's nothing to fall back to on a
+     * user's very first payment if it also omits urlToRedirect.
+     */
+    private function resolveLastKnownCustomerUrlForUserId(int $userId): ?string
     {
-        if (! is_string($customerUrl) || trim($customerUrl) === '') {
-            return;
-        }
+        return DB::table('payment_user')
+            ->where('auth_user_id', $userId)
+            ->whereNotNull('customer_url')
+            ->where('customer_url', '!=', '')
+            ->orderByDesc('updated_at')
+            ->value('customer_url');
+    }
 
-        if ($userId === null || $userId === '') {
-            return;
-        }
+    private function resolveUserIdByEmail(string $email): ?int
+    {
+        $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
+        $id = DB::table($userTable)
+            ->whereRaw('LOWER(email) = ?', [strtolower(trim($email))])
+            ->value('id');
 
-        $table = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
-        DB::table($table)->where('id', (int) $userId)->update(['customer_url' => trim($customerUrl)]);
+        return $id !== null ? (int) $id : null;
     }
 
     private function normalizeCustomerUrl(mixed $value): ?string
@@ -833,7 +809,6 @@ class CybersourceController extends PaymentProviderController
 
         $customerUrl = $customerUrl ?? $this->resolveCustomerUrl($paymentData);
         $userId = $paymentData['user_id'] ?? $paymentData['customer_id'] ?? $paymentData['auth_user_id'] ?? null;
-        $this->updateCustomerUrlForUser($customerUrl, $userId);
 
         $payload = [
             'code' => $code,

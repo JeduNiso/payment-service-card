@@ -28,7 +28,6 @@ class PaymentSessionCodeReuseTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/code-reuse',
         ]);
     }
 

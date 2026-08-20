@@ -23,7 +23,6 @@ class PaymentTokenEndpointTest extends TestCase
                 'is_staff' => false,
                 'is_active' => true,
                 'date_joined' => now(),
-                'customer_url' => 'https://client.example.com/token',
             ],
         ]);
 
@@ -59,7 +58,6 @@ class PaymentTokenEndpointTest extends TestCase
                 'is_staff' => false,
                 'is_active' => true,
                 'date_joined' => now(),
-                'customer_url' => 'https://client.example.com/token',
             ],
         ]);
 
@@ -117,7 +115,6 @@ class PaymentTokenEndpointTest extends TestCase
                 'is_staff' => false,
                 'is_active' => true,
                 'date_joined' => now(),
-                'customer_url' => 'https://client.example.com/session',
             ],
         ]);
 
@@ -151,7 +148,6 @@ class PaymentTokenEndpointTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/return',
         ]);
 
         $firstPaymentId = DB::table('redirect_payment')->insertGetId([
@@ -240,7 +236,6 @@ class PaymentTokenEndpointTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/lookup',
         ]);
 
         $paymentId = DB::table('redirect_payment')->insertGetId([
@@ -300,7 +295,6 @@ class PaymentTokenEndpointTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/all',
         ]);
 
         $firstPaymentId = DB::table('redirect_payment')->insertGetId([
@@ -384,7 +378,6 @@ class PaymentTokenEndpointTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/date',
         ]);
 
         $paymentId = DB::table('redirect_payment')->insertGetId([
@@ -443,7 +436,6 @@ class PaymentTokenEndpointTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/filtered',
         ]);
 
         $paidPaymentId = DB::table('redirect_payment')->insertGetId([

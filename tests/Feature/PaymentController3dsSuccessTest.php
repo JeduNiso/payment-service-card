@@ -7,12 +7,40 @@ use App\Services\CyberSource\CyberSourceService;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\PaymentSessionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Mockery;
 use Tests\TestCase;
 
 class PaymentController3dsSuccessTest extends TestCase
 {
     use \Illuminate\Foundation\Testing\DatabaseTransactions;
+
+    /**
+     * customer_url lives on payment_user (one value per payment), not on the user —
+     * resolveCustomerUrl()'s fallback for a payment that doesn't carry its own
+     * customer_url/redirect_url is "this user's most recent prior payment". Tests that
+     * exercise that fallback need an actual prior payment_user row to find.
+     */
+    private function seedPriorPaymentCustomerUrl(int $userId, string $customerUrl): void
+    {
+        $paymentId = DB::table('redirect_payment')->insertGetId([
+            'bookCode' => 'PRIOR-' . uniqid(),
+            'total' => '0',
+            'currency' => 'BOB',
+            'state' => '2',
+            'creationDate' => now()->subDay(),
+            'paymentDate' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+        ]);
+
+        DB::table('payment_user')->insert([
+            'auth_user_id' => $userId,
+            'redirect_payment_id' => $paymentId,
+            'customer_url' => $customerUrl,
+            'created_at' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+        ]);
+    }
 
     protected function tearDown(): void
     {
@@ -208,8 +236,8 @@ class PaymentController3dsSuccessTest extends TestCase
             'first_name' => 'Customer',
             'last_name' => 'Redirect',
             'email' => 'customer-redirect@example.com',
-            'customer_url' => 'https://merchant.example/checkout/result',
         ]);
+        $this->seedPriorPaymentCustomerUrl($user->getKey(), 'https://merchant.example/checkout/result');
 
         $paymentService = Mockery::mock(PaymentService::class);
         $cyberSourceService = Mockery::mock(CyberSourceService::class);
@@ -251,8 +279,8 @@ class PaymentController3dsSuccessTest extends TestCase
             'first_name' => 'Redirect',
             'last_name' => 'Customer',
             'email' => 'redirect-customer@example.com',
-            'customer_url' => 'https://merchant.example/checkout/result',
         ]);
+        $this->seedPriorPaymentCustomerUrl($user->getKey(), 'https://merchant.example/checkout/result');
 
         $paymentService = Mockery::mock(PaymentService::class);
         $cyberSourceService = Mockery::mock(CyberSourceService::class);
@@ -406,8 +434,8 @@ class PaymentController3dsSuccessTest extends TestCase
             'first_name' => 'Customer',
             'last_name' => 'Email',
             'email' => 'customer-email@example.com',
-            'customer_url' => 'https://merchant.example/checkout/from-email',
         ]);
+        $this->seedPriorPaymentCustomerUrl($user->getKey(), 'https://merchant.example/checkout/from-email');
 
         $paymentService = Mockery::mock(PaymentService::class);
         $cyberSourceService = Mockery::mock(CyberSourceService::class);
@@ -438,8 +466,8 @@ class PaymentController3dsSuccessTest extends TestCase
             'first_name' => 'Invalid',
             'last_name' => 'Customer',
             'email' => 'invalid-customer-url@example.com',
-            'customer_url' => 'www.google.com',
         ]);
+        $this->seedPriorPaymentCustomerUrl($user->getKey(), 'www.google.com');
 
         $paymentService = Mockery::mock(PaymentService::class);
         $cyberSourceService = Mockery::mock(CyberSourceService::class);

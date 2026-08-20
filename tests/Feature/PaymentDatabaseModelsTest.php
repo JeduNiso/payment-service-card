@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\Payments\PaymentPersistenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -82,7 +83,13 @@ class PaymentDatabaseModelsTest extends TestCase
 
         $this->assertSame(2, (int) ($updated->state ?? 2));
         $this->assertSame('txn-8899', $updated->transaction_id ?? $updated->reference ?? null);
-        $this->assertSame('https://merchant.example/receipt', $user->fresh()->customer_url ?? null);
+
+        // customer_url now lives per payment_user row, not on the user itself.
+        $pivotCustomerUrl = DB::table('payment_user')
+            ->where('auth_user_id', $user->getKey())
+            ->where('redirect_payment_id', $updated->getKey())
+            ->value('customer_url');
+        $this->assertSame('https://merchant.example/receipt', $pivotCustomerUrl);
     }
 
     public function test_it_fills_required_legacy_redirect_payment_fields_when_table_has_strict_schema(): void

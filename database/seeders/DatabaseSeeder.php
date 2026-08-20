@@ -24,7 +24,6 @@ class DatabaseSeeder extends Seeder
             'is_active' => true,
             'date_joined' => now(),
             'last_login' => null,
-            'customer_url' => '',
         ]);
     }
 }

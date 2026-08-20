@@ -20,11 +20,13 @@ use Tests\TestCase;
  * using the per-merchant `notification_url` / `merchant_notification_api_key`
  * stored on `auth_user` — never a global fixed key.
  *
- * notification_url is deliberately its own column, separate from customer_url:
- * customer_url doubles as a general "where does this customer end up" field that
- * other flows (e.g. urlToRedirect on /api/payments/session) also write to, and an
- * earlier version of this test collapsed the two — letting a payment's
- * urlToRedirect silently overwrite a merchant's real webhook URL.
+ * notification_url is deliberately its own column on auth_user, separate from
+ * customer_url — which used to also live on auth_user (a single, mutable
+ * "where does this customer end up" value shared by every payment) until it moved
+ * to payment_user (one value per payment). An earlier version of both fields living
+ * on auth_user let a payment's urlToRedirect silently overwrite a merchant's real
+ * webhook URL; see test_urltoredirect_does_not_overwrite_the_merchants_notification_url
+ * below.
  *
  * Historically this contract was only implemented by
  * CybersourceController::notifyMerchantWithUserToken(), while two of the four
@@ -570,9 +572,7 @@ class MerchantNotificationTest extends TestCase
      */
     public function test_urltoredirect_does_not_overwrite_the_merchants_notification_url(): void
     {
-        $user = $this->makeMerchantUser([
-            'customer_url' => 'https://old-customer-redirect.example.test',
-        ]);
+        $user = $this->makeMerchantUser();
         $this->fakeMerchantEndpoints();
 
         $paymentService = Mockery::mock(PaymentService::class);

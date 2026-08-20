@@ -46,7 +46,6 @@ class AuthenticationHashBypassTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/hash-bypass-customer-search',
         ]);
 
         $this->expectException(InvalidArgumentException::class);
@@ -66,7 +65,6 @@ class AuthenticationHashBypassTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/hash-bypass-customer-search-ok',
         ]);
 
         $user = app(PaymentCustomerSearchService::class)->resolveUser('hash-bypass-customer-search-ok', 'the-real-password');
@@ -89,7 +87,6 @@ class AuthenticationHashBypassTest extends TestCase
             'is_staff' => false,
             'is_active' => true,
             'date_joined' => now(),
-            'customer_url' => 'https://client.example.com/legacy-customer-search',
         ]);
 
         $user = app(PaymentCustomerSearchService::class)->resolveUser('legacy-plaintext-customer-search', 'plain-legacy-password');

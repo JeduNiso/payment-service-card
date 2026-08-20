@@ -121,7 +121,10 @@ class PaymentPersistenceService
 
             $customerUrl = $payload['customer_url'] ?? null;
             if ($userId !== null && is_string($customerUrl) && trim($customerUrl) !== '' && $this->canLinkUser((int) $userId)) {
-                User::query()->where('id', (int) $userId)->update(['customer_url' => trim($customerUrl)]);
+                DB::table('payment_user')
+                    ->where('auth_user_id', (int) $userId)
+                    ->where('redirect_payment_id', $payment->getKey())
+                    ->update(['customer_url' => trim($customerUrl)]);
             }
 
             return $payment->fresh();
@@ -220,7 +223,10 @@ class PaymentPersistenceService
         }
 
         if ($userId !== null && $this->canLinkUser((int) $userId) && is_string($customerUrl) && trim($customerUrl) !== '') {
-            User::query()->where('id', (int) $userId)->update(['customer_url' => trim($customerUrl)]);
+            DB::table('payment_user')
+                ->where('auth_user_id', (int) $userId)
+                ->where('redirect_payment_id', $payment->getKey())
+                ->update(['customer_url' => trim($customerUrl)]);
         }
 
         return $payment->fresh();
