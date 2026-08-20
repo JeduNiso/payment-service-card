@@ -185,7 +185,7 @@
 
         .meta-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: 1fr;
             gap: 16px;
             margin-top: 18px;
         }
@@ -565,10 +565,6 @@
                 <div class="ticket-code">{{ strtoupper($booking['code'] ?? '---') }}</div>
 
                 <div class="meta-grid">
-                    <div class="meta-item">
-                        <div class="meta-label">Monto</div>
-                        <div class="meta-value">{{ number_format((float) ($booking['amount'] ?? 0), 2, ',', '.') }} {{ $booking['currency'] ?? 'BOB' }}</div>
-                    </div>
                     <div class="meta-item">
                         <div class="meta-label">Servicio</div>
                         <div class="meta-value">{{ $booking['description'] ?? $booking['service'] ?? 'Pago de servicio' }}</div>
