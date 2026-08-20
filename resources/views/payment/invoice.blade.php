@@ -37,7 +37,9 @@
     <p class="lead-text">{{ __('payment.invoice.thanks') }}</p>
 
     <div class="actions">
-        <button type="button" class="btn btn-primary" onclick="window.print()">{{ __('payment.invoice.print') }}</button>
+        @unless ($autoRedirect ?? false)
+            <button type="button" class="btn btn-primary" onclick="window.print()">{{ __('payment.invoice.print') }}</button>
+        @endunless
         <a class="btn btn-secondary" href="{{ $homeUrl ?: '#' }}">{{ __('payment.invoice.home') }}</a>
     </div>
 </x-payment.receipt-shell>
