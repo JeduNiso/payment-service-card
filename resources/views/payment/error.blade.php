@@ -4,6 +4,8 @@
     :reference="$reference"
     status="danger"
     :status-label="__('payment.error.status')"
+    :auto-redirect="$autoRedirect ?? false"
+    :home-url="$homeUrl"
 >
     <div class="card-block tone-danger">
         <div class="section-title">{{ $title }}</div>

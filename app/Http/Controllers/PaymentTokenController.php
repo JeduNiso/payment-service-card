@@ -28,6 +28,8 @@ class PaymentTokenController extends Controller
             'provider' => ['nullable', 'string', 'max:40'],
             'language' => ['nullable', 'string', 'max:10'],
             'descripcion' => ['nullable', 'string', 'max:255'],
+            'redirect' => ['nullable', 'boolean'],
+            'urlToRedirect' => ['nullable', 'required_if:redirect,true', 'url', 'max:2048'],
         ]);
 
         try {
@@ -36,9 +38,13 @@ class PaymentTokenController extends Controller
                 (float) $data['amount'],
                 $data['currency'],
                 (string) $request->bearerToken(),
-                $data['provider'] ?? null,
-                $data['language'] ?? null,
-                $data['descripcion'] ?? null,
+                [
+                    'provider' => $data['provider'] ?? null,
+                    'language' => $data['language'] ?? null,
+                    'description' => $data['descripcion'] ?? null,
+                    'redirect' => $data['redirect'] ?? false,
+                    'redirect_url' => $data['urlToRedirect'] ?? null,
+                ],
             );
 
             return response()->json($result, 200);

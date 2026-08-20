@@ -4,6 +4,8 @@
     :reference="$reference"
     status="success"
     :status-label="__('payment.invoice.status')"
+    :auto-redirect="$autoRedirect ?? false"
+    :home-url="$homeUrl"
 >
     <div class="card-block tone-success">
         <div class="section-title">{{ __('payment.invoice.summary_title') }}</div>

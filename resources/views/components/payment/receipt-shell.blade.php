@@ -4,6 +4,9 @@
     'reference' => '—',
     'status' => 'success',
     'statusLabel' => 'Pagado',
+    'autoRedirect' => false,
+    'homeUrl' => null,
+    'redirectSeconds' => 10,
 ])
 
 <!DOCTYPE html>
@@ -206,6 +209,26 @@
 
         .actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 
+        .redirect-note {
+            margin-top: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 0.86rem;
+        }
+        .redirect-note .spinner {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid var(--line);
+            border-top-color: var(--primary);
+            animation: redirectSpin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes redirectSpin { to { transform: rotate(360deg); } }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -259,8 +282,44 @@
             </div>
             <div class="body">
                 {{ $slot }}
+
+                @if ($autoRedirect && $homeUrl)
+                    <div class="redirect-note" id="redirectNote" data-template="{{ __('payment.redirect_note') }}">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <span id="redirectNoteText"></span>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
+
+    @if ($autoRedirect && $homeUrl)
+        <script>
+            (function () {
+                var redirectUrl = @json($homeUrl);
+                var seconds = {{ (int) $redirectSeconds }};
+                var template = document.getElementById('redirectNote').dataset.template;
+                var textEl = document.getElementById('redirectNoteText');
+                var deadline = Date.now() + seconds * 1000;
+
+                function tick() {
+                    var remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+                    textEl.textContent = template.replace(':seconds', remaining);
+
+                    if (Date.now() >= deadline) {
+                        window.location.href = redirectUrl;
+                        return;
+                    }
+
+                    setTimeout(tick, 250);
+                }
+
+                // Polls real elapsed time (instead of one setTimeout for the full delay)
+                // so the redirect still fires right on schedule even after a blocking
+                // action like window.print() pauses script execution for a while.
+                tick();
+            })();
+        </script>
+    @endif
 </body>
 </html>

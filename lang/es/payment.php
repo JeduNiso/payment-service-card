@@ -2,6 +2,8 @@
 
 return [
 
+    'redirect_note' => 'Redirigiendo en :seconds segundos…',
+
     'checkout' => [
         'title' => 'Pago de servicio',
         'secure_checkout' => 'Compra Segura',

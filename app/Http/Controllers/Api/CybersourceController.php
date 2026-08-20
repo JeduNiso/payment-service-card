@@ -126,6 +126,8 @@ class CybersourceController extends PaymentProviderController
             'status' => 'pending',
             'language' => $paymentSession['language'] ?? 'es',
             'description' => $paymentSession['description'] ?? null,
+            'auto_redirect' => $paymentSession['auto_redirect'] ?? false,
+            'redirect_url' => $paymentSession['redirect_url'] ?? null,
         ], 15);
 
         cache()->put("payment_token_for_code:{$code}", $sessionToken, now()->addMinutes(15));
@@ -267,7 +269,8 @@ class CybersourceController extends PaymentProviderController
                     $errorReason,
                     $errorCode,
                     $booking->booking_code,
-                    $this->resolveHomeUrlFromCustomerUrl($paymentData)
+                    $this->resolveHomeUrlFromCustomerUrl($paymentData),
+                    (bool) ($paymentData['auto_redirect'] ?? false)
                 ),
                 200,
                 ['Content-Type' => 'text/html; charset=UTF-8']
@@ -319,7 +322,8 @@ class CybersourceController extends PaymentProviderController
                 $authFailure['message'],
                 $authFailure['code'],
                 $booking->booking_code,
-                $this->resolveHomeUrlFromCustomerUrl($paymentData)
+                $this->resolveHomeUrlFromCustomerUrl($paymentData),
+                (bool) ($paymentData['auto_redirect'] ?? false)
             ),
             200,
             ['Content-Type' => 'text/html; charset=UTF-8']
@@ -449,7 +453,8 @@ class CybersourceController extends PaymentProviderController
                     $errorReason,
                     $errorCode,
                     $booking->booking_code,
-                    $this->resolveHomeUrlFromCustomerUrl($paymentData)
+                    $this->resolveHomeUrlFromCustomerUrl($paymentData),
+                    (bool) ($paymentData['auto_redirect'] ?? false)
                 );
             }
         } else {
@@ -488,7 +493,8 @@ class CybersourceController extends PaymentProviderController
                 $errorInfo['message'],
                 $errorInfo['code'],
                 $booking->booking_code,
-                $this->resolveHomeUrlFromCustomerUrl($paymentData)
+                $this->resolveHomeUrlFromCustomerUrl($paymentData),
+                (bool) ($paymentData['auto_redirect'] ?? false)
             );
         }
 
@@ -706,6 +712,17 @@ class CybersourceController extends PaymentProviderController
 
     private function resolveHomeUrlFromCustomerUrl(array $paymentData): ?string
     {
+        // An explicit redirect_url from /api/payments/session (urlToRedirect) always
+        // wins over the customer_url auto-resolved from the merchant's own record —
+        // it's what the caller asked for on this specific payment.
+        $explicit = $paymentData['redirect_url'] ?? null;
+        if (is_string($explicit)) {
+            $normalized = $this->normalizeCustomerUrl($explicit);
+            if ($normalized !== null) {
+                return $normalized;
+            }
+        }
+
         $userId = $paymentData['user_id'] ?? $paymentData['auth_user_id'] ?? $paymentData['customer_id'] ?? null;
 
         if (isset($paymentData['user']) && is_array($paymentData['user']) && isset($paymentData['user']['id'])) {
@@ -852,6 +869,7 @@ class CybersourceController extends PaymentProviderController
     {
         $cardLast4 = preg_replace('/\D+/', '', (string) ($paymentData['card_number'] ?? ''));
         $cardLast4 = $cardLast4 !== '' ? '**** ' . substr($cardLast4, -4) : '—';
+        $homeUrl = $this->resolveHomeUrlFromCustomerUrl($paymentData);
 
         return view('payment.invoice', [
             'reference' => $booking->booking_code ?? '—',
@@ -861,11 +879,12 @@ class CybersourceController extends PaymentProviderController
             'email' => $paymentData['billing_email'] ?? ($booking->contact_email ?? '—'),
             'currency' => 'BOB',
             'amount' => number_format((float) ($booking->total_amount ?? 0), 2, ',', '.'),
-            'homeUrl' => $this->resolveHomeUrlFromCustomerUrl($paymentData),
+            'homeUrl' => $homeUrl,
+            'autoRedirect' => $homeUrl !== null && (bool) ($paymentData['auto_redirect'] ?? false),
         ])->render();
     }
 
-    private function render_error_html(string $title, string $reason, string $errorCode, string $bookingCode, ?string $homeUrl = null): string
+    private function render_error_html(string $title, string $reason, string $errorCode, string $bookingCode, ?string $homeUrl = null, bool $autoRedirect = false): string
     {
         return view('payment.error', [
             'title' => $title,
@@ -873,6 +892,7 @@ class CybersourceController extends PaymentProviderController
             'errorCode' => $errorCode,
             'reference' => $bookingCode !== '' ? $bookingCode : '—',
             'homeUrl' => is_string($homeUrl) && trim($homeUrl) !== '' ? $homeUrl : '#',
+            'autoRedirect' => is_string($homeUrl) && trim($homeUrl) !== '' && $autoRedirect,
         ])->render();
     }
 

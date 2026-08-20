@@ -15,7 +15,17 @@ class PaymentTokenService
     ) {
     }
 
-    public function issue(string $code, float $amount, string $currency, string $apiKey, ?string $provider = null, ?string $language = null, ?string $description = null): array
+    /**
+     * $options may contain:
+     *   - provider (?string)
+     *   - language (?string) — "esp"/"eng", normalized to es/en, defaults to es.
+     *   - description (?string) — shown in the checkout "Servicio" box.
+     *   - redirect (bool) — auto-redirect to redirect_url after the receipt/error
+     *     page instead of only offering it as the "back to home" link.
+     *   - redirect_url (?string) — where to send the customer; validated/normalized
+     *     to an http(s) URL at render time by CybersourceController.
+     */
+    public function issue(string $code, float $amount, string $currency, string $apiKey, array $options = []): array
     {
         $user = $this->resolveUserByApiKey($apiKey);
 
@@ -33,8 +43,11 @@ class PaymentTokenService
             throw new InvalidArgumentException('Este código ya tiene un pago registrado. Genere un nuevo código para un nuevo intento.');
         }
 
-        $provider = $this->paymentRouterService->resolveProvider($provider, $user->username ?? null);
+        $provider = $this->paymentRouterService->resolveProvider($options['provider'] ?? null, $user->username ?? null);
+        $description = $options['description'] ?? null;
         $description = is_string($description) && trim($description) !== '' ? trim($description) : null;
+        $redirectUrl = $options['redirect_url'] ?? null;
+        $redirectUrl = is_string($redirectUrl) && trim($redirectUrl) !== '' ? trim($redirectUrl) : null;
 
         $token = $this->paymentSessionService->store($code, [
             'code' => strtoupper($code),
@@ -44,8 +57,10 @@ class PaymentTokenService
             'user' => $user->username,
             'email' => $user->email ?? null,
             'provider' => $provider,
-            'language' => $this->normalizeLanguage($language),
+            'language' => $this->normalizeLanguage($options['language'] ?? null),
             'description' => $description,
+            'auto_redirect' => (bool) ($options['redirect'] ?? false),
+            'redirect_url' => $redirectUrl,
         ], 15);
 
         return [
