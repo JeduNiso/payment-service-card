@@ -52,6 +52,7 @@ return [
         'thanks' => 'Gracias por su compra. Conserve este comprobante como respaldo de su transacción.',
         'print' => 'Imprimir comprobante',
         'home' => 'Volver al inicio',
+        'finish_note' => "Por favor, presiona el botón \"Volver al inicio\" para finalizar.",
     ],
 
     'error' => [

@@ -52,6 +52,7 @@ return [
         'thanks' => 'Thank you for your purchase. Keep this receipt as proof of your transaction.',
         'print' => 'Print receipt',
         'home' => 'Back to home',
+        'finish_note' => 'Please press the "Back to home" button to finish.',
     ],
 
     'error' => [

@@ -44,4 +44,8 @@
         @endunless
         <a class="btn btn-secondary" href="{{ $homeUrl ?: '#' }}">{{ __('payment.invoice.home') }}</a>
     </div>
+
+    @unless ($autoRedirect ?? false)
+        <p class="lead-text no-print">{{ __('payment.invoice.finish_note') }}</p>
+    @endunless
 </x-payment.receipt-shell>

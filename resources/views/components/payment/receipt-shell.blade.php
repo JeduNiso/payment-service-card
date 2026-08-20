@@ -266,6 +266,10 @@
             .actions { flex-direction: column; }
             .btn { width: 100%; }
         }
+
+        @media print {
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body>
