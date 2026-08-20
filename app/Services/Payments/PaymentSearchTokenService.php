@@ -78,7 +78,12 @@ class PaymentSearchTokenService
                 $matches = false;
             }
 
-            if (! $matches) {
+            // Only fall back to a raw string comparison for legacy accounts whose
+            // `password` column never held a real hash (e.g. plaintext migrated from
+            // another system). If $storedPassword IS a recognized hash, a raw compare
+            // would let anyone who has leaked the hash authenticate with it directly
+            // instead of the real password — never allow that.
+            if (! $matches && (Hash::info($storedPassword)['algoName'] ?? 'unknown') === 'unknown') {
                 $matches = hash_equals($storedPassword, $password);
             }
         }
