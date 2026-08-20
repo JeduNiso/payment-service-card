@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Booking;
+use App\Services\CyberSource\CyberSourceSanitizer;
 use App\Services\CyberSource\CyberSourceService;
 use App\Services\Payments\PaymentPersistenceService;
 use App\Services\Payments\PaymentService;
@@ -334,7 +335,7 @@ class CybersourceController extends PaymentProviderController
 
         $booking = $this->resolvePaymentSessionBooking($code, $paymentSessionToken);
         $paymentData = $booking->cybersource_payment_data;
-        logger()->info('Fetched payment session data', ['code' => $code, 'payment_data' => $paymentData]);
+        logger()->info('Fetched payment session data', ['code' => $code, 'payment_data' => $this->sanitizePaymentDataForLog($paymentData)]);
 
         if (!is_array($paymentData)) {
             return response()->json(['message' => 'Datos de pago no encontrados.'], 422);
@@ -508,6 +509,24 @@ class CybersourceController extends PaymentProviderController
         return $this->cyberSourceService->paymentWith3dsDynamic($paymentData, $booking, $authData, $type, $context);
     }
 
+
+    /**
+     * Never log a payment session payload as-is — it carries the full PAN and CVV.
+     * Mask those two fields before handing the array to logger(); everything else
+     * (billing info, amounts) stays untouched for debuggability.
+     */
+    private function sanitizePaymentDataForLog(array $paymentData): array
+    {
+        if (isset($paymentData['card_number']) && is_string($paymentData['card_number'])) {
+            $paymentData['card_number'] = CyberSourceSanitizer::maskPan($paymentData['card_number']);
+        }
+
+        if (isset($paymentData['cvv']) && is_string($paymentData['cvv'])) {
+            $paymentData['cvv'] = CyberSourceSanitizer::maskCvv($paymentData['cvv']);
+        }
+
+        return $paymentData;
+    }
 
     private function persistSuccessfulPayment(string $code, array $paymentData, array $paymentResult): void
     {

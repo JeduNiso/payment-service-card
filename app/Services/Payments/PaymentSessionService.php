@@ -3,8 +3,10 @@
 namespace App\Services\Payments;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use Throwable;
 
 class PaymentSessionService
 {
@@ -26,6 +28,12 @@ class PaymentSessionService
             'expires_at' => $expiresAt->getTimestamp(),
             ...$payload,
         ];
+
+        // The session cache uses the `database` store, i.e. this ends up as a row in
+        // the app's own DB — encrypt the card number and CVV at rest so a raw dump/
+        // backup of that table doesn't expose them in cleartext. decryptSensitiveFields()
+        // reverses this transparently whenever the session is read back.
+        $session = $this->encryptSensitiveFields($session);
 
         $cacheKey = $this->cacheKey($token);
         Log::info('Storing payment session', ['token' => $token, 'cacheKey' => $cacheKey, 'expiresAt' => $expiresAt]);
@@ -61,6 +69,8 @@ class PaymentSessionService
         if (! is_array($payload)) {
             throw new InvalidArgumentException('The payment session is not available anymore.');
         }
+
+        $payload = $this->decryptSensitiveFields($payload);
 
         $expiresAt = (int) ($payload['expires_at'] ?? 0);
 
@@ -120,6 +130,43 @@ class PaymentSessionService
         Cache::forget('payment_token_for_code:' . $normalizedCode);
         Cache::forget('payment_reference_id_for_code:' . $normalizedCode);
         Cache::forget('payment_session_data:' . $normalizedCode);
+    }
+
+    /**
+     * Fields that must never sit in the `cache` table (or any DB-backed store) as
+     * plain text. Encrypted with the app's own key, so this is only ever readable by
+     * this application, and only for as long as the cache row itself lives.
+     */
+    protected const SENSITIVE_FIELDS = ['card_number', 'cvv'];
+
+    protected function encryptSensitiveFields(array $session): array
+    {
+        foreach (self::SENSITIVE_FIELDS as $field) {
+            if (isset($session[$field]) && is_string($session[$field]) && $session[$field] !== '') {
+                $session[$field] = Crypt::encryptString($session[$field]);
+            }
+        }
+
+        return $session;
+    }
+
+    protected function decryptSensitiveFields(array $session): array
+    {
+        foreach (self::SENSITIVE_FIELDS as $field) {
+            if (! isset($session[$field]) || ! is_string($session[$field]) || $session[$field] === '') {
+                continue;
+            }
+
+            try {
+                $session[$field] = Crypt::decryptString($session[$field]);
+            } catch (Throwable $e) {
+                // Not ciphertext we produced (e.g. a session written just before this
+                // encryption was added, still live within its TTL) — use it as-is
+                // rather than failing the whole payment for an in-flight session.
+            }
+        }
+
+        return $session;
     }
 
     protected function generateOpaqueToken(): string
