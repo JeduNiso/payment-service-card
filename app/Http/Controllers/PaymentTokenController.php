@@ -24,8 +24,6 @@ class PaymentTokenController extends Controller
             'code' => ['required', 'string', 'max:50'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'currency' => ['required', 'string', 'size:3'],
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
             'provider' => ['nullable', 'string', 'max:40'],
         ]);
 
@@ -34,8 +32,7 @@ class PaymentTokenController extends Controller
                 $data['code'],
                 (float) $data['amount'],
                 $data['currency'],
-                $data['username'],
-                $data['password'],
+                (string) $request->bearerToken(),
                 $data['provider'] ?? null,
             );
 
@@ -50,16 +47,8 @@ class PaymentTokenController extends Controller
 
     public function issueSearchToken(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
         try {
-            $token = $this->paymentSearchTokenService->issue(
-                (string) $data['username'],
-                (string) $data['password'],
-            );
+            $token = $this->paymentSearchTokenService->issue((string) $request->bearerToken());
 
             return response()->json(['success' => true, 'token' => $token, 'expires_in' => 900], 200);
         } catch (InvalidArgumentException $e) {

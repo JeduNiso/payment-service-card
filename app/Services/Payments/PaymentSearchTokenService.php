@@ -5,15 +5,16 @@ namespace App\Services\Payments;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 
 class PaymentSearchTokenService
 {
-    public function issue(string $username, string $password): string
+    use ResolvesMerchantApiKey;
+
+    public function issue(string $apiKey): string
     {
-        $user = $this->resolveUser($username, $password);
+        $user = $this->resolveUserByApiKey($apiKey);
 
         $payload = [
             'iss' => config('app.url', 'http://localhost:8000'),
@@ -47,49 +48,6 @@ class PaymentSearchTokenService
 
         if (! $user) {
             throw new InvalidArgumentException('Token inválido.');
-        }
-
-        return $user;
-    }
-
-    protected function resolveUser(string $username, string $password): object
-    {
-        $table = Schema::hasTable('auth_user') ? 'auth_user' : 'users';
-        $candidate = strtolower(trim($username));
-
-        $user = DB::table($table)
-            ->where(function ($query) use ($candidate) {
-                $query->whereRaw('LOWER(username) = ?', [$candidate])
-                    ->orWhereRaw('LOWER(email) = ?', [$candidate]);
-            })
-            ->first();
-
-        if (! $user) {
-            throw new InvalidArgumentException('Credenciales inválidas.');
-        }
-
-        $storedPassword = (string) ($user->password ?? '');
-        $matches = false;
-
-        if ($storedPassword !== '') {
-            try {
-                $matches = Hash::check($password, $storedPassword);
-            } catch (\RuntimeException $e) {
-                $matches = false;
-            }
-
-            // Only fall back to a raw string comparison for legacy accounts whose
-            // `password` column never held a real hash (e.g. plaintext migrated from
-            // another system). If $storedPassword IS a recognized hash, a raw compare
-            // would let anyone who has leaked the hash authenticate with it directly
-            // instead of the real password — never allow that.
-            if (! $matches && (Hash::info($storedPassword)['algoName'] ?? 'unknown') === 'unknown') {
-                $matches = hash_equals($storedPassword, $password);
-            }
-        }
-
-        if (! $matches) {
-            throw new InvalidArgumentException('Credenciales inválidas.');
         }
 
         return $user;

@@ -17,7 +17,8 @@ class PaymentTokenEndpointTest extends TestCase
                 'first_name' => 'DB',
                 'last_name' => 'User',
                 'email' => 'db-user@example.com',
-                'password' => 'db-pass',
+                'password' => 'unused-real-login-password',
+                'merchant_notification_api_key' => 'db-user-api-key',
                 'is_superuser' => false,
                 'is_staff' => false,
                 'is_active' => true,
@@ -30,8 +31,8 @@ class PaymentTokenEndpointTest extends TestCase
             'code' => 'ABC123',
             'amount' => 150.50,
             'currency' => 'BOB',
-            'username' => 'db-user',
-            'password' => 'db-pass',
+        ], [
+            'HTTP_Authorization' => 'Bearer db-user-api-key',
         ]);
 
         $response->assertOk();
@@ -52,7 +53,8 @@ class PaymentTokenEndpointTest extends TestCase
                 'first_name' => 'DB',
                 'last_name' => 'User',
                 'email' => 'db-user@example.com',
-                'password' => 'db-pass',
+                'password' => 'unused-real-login-password',
+                'merchant_notification_api_key' => 'db-user-api-key',
                 'is_superuser' => false,
                 'is_staff' => false,
                 'is_active' => true,
@@ -65,8 +67,20 @@ class PaymentTokenEndpointTest extends TestCase
             'code' => 'ABC123',
             'amount' => 150.50,
             'currency' => 'BOB',
-            'username' => 'wrong-user',
-            'password' => 'wrong-pass',
+        ], [
+            'HTTP_Authorization' => 'Bearer wrong-api-key',
+        ]);
+
+        $response->assertStatus(401);
+        $this->assertSame('Credenciales inválidas.', $response->json('message'));
+    }
+
+    public function test_it_rejects_a_missing_bearer_token(): void
+    {
+        $response = $this->postJson('/api/payments/session', [
+            'code' => 'ABC123',
+            'amount' => 150.50,
+            'currency' => 'BOB',
         ]);
 
         $response->assertStatus(401);
@@ -97,7 +111,8 @@ class PaymentTokenEndpointTest extends TestCase
                 'first_name' => 'JWT',
                 'last_name' => 'User',
                 'email' => 'jwt-user@example.com',
-                'password' => 'jwt-pass',
+                'password' => 'unused-real-login-password',
+                'merchant_notification_api_key' => 'jwt-user-api-key',
                 'is_superuser' => false,
                 'is_staff' => false,
                 'is_active' => true,
@@ -110,8 +125,8 @@ class PaymentTokenEndpointTest extends TestCase
             'code' => 'TOKEN-ONE-TIME',
             'amount' => 75,
             'currency' => 'BOB',
-            'username' => 'jwt-user',
-            'password' => 'jwt-pass',
+        ], [
+            'HTTP_Authorization' => 'Bearer jwt-user-api-key',
         ]);
 
         $sessionResponse->assertOk();
@@ -122,9 +137,8 @@ class PaymentTokenEndpointTest extends TestCase
         app(\App\Services\Payments\PaymentSessionService::class)->consume($sessionToken);
         app(\App\Services\Payments\PaymentSessionService::class)->consume($sessionToken);
 
-        $jwtResponse = $this->postJson('/api/payments/search-token', [
-            'username' => 'jwt-user',
-            'password' => 'jwt-pass',
+        $jwtResponse = $this->postJson('/api/payments/search-token', [], [
+            'HTTP_Authorization' => 'Bearer jwt-user-api-key',
         ]);
 
         $jwtResponse->assertOk();
@@ -140,15 +154,13 @@ class PaymentTokenEndpointTest extends TestCase
 
     public function test_it_lists_customer_payments_by_date_range_with_valid_bearer_token(): void
     {
-        config()->set('services.payment_api.username', 'demo-user');
-        config()->set('services.payment_api.password', 'demo-pass');
-
         $userId = DB::table('auth_user')->insertGetId([
             'username' => 'search-user-bearer-range',
             'first_name' => 'Search',
             'last_name' => 'User',
             'email' => 'search-user-range@example.com',
-            'password' => 'secret123',
+            'password' => 'unused-real-login-password',
+            'merchant_notification_api_key' => 'search-user-bearer-range-api-key',
             'is_superuser' => false,
             'is_staff' => false,
             'is_active' => true,
@@ -213,9 +225,8 @@ class PaymentTokenEndpointTest extends TestCase
             ['auth_user_id' => $userId, 'redirect_payment_id' => $secondPaymentId],
         ]);
 
-        $jwtResponse = $this->postJson('/api/payments/search-token', [
-            'username' => 'search-user-bearer-range',
-            'password' => 'secret123',
+        $jwtResponse = $this->postJson('/api/payments/search-token', [], [
+            'HTTP_Authorization' => 'Bearer search-user-bearer-range-api-key',
         ]);
 
         $jwtResponse->assertOk();
@@ -239,15 +250,13 @@ class PaymentTokenEndpointTest extends TestCase
 
     public function test_it_searches_directly_by_book_code_with_valid_bearer_token(): void
     {
-        config()->set('services.payment_api.username', 'demo-user');
-        config()->set('services.payment_api.password', 'demo-pass');
-
         $userId = DB::table('auth_user')->insertGetId([
             'username' => 'lookup-user',
             'first_name' => 'Lookup',
             'last_name' => 'User',
             'email' => 'lookup-user@example.com',
-            'password' => 'secret456',
+            'password' => 'unused-real-login-password',
+            'merchant_notification_api_key' => 'lookup-user-api-key',
             'is_superuser' => false,
             'is_staff' => false,
             'is_active' => true,
@@ -285,9 +294,8 @@ class PaymentTokenEndpointTest extends TestCase
             ['auth_user_id' => $userId, 'redirect_payment_id' => $paymentId],
         ]);
 
-        $jwtResponse = $this->postJson('/api/payments/search-token', [
-            'username' => 'lookup-user',
-            'password' => 'secret456',
+        $jwtResponse = $this->postJson('/api/payments/search-token', [], [
+            'HTTP_Authorization' => 'Bearer lookup-user-api-key',
         ]);
 
         $jwtResponse->assertOk();
@@ -309,15 +317,13 @@ class PaymentTokenEndpointTest extends TestCase
 
     public function test_it_lists_all_customer_payments_without_filters_using_bearer_token(): void
     {
-        config()->set('services.payment_api.username', 'demo-user');
-        config()->set('services.payment_api.password', 'demo-pass');
-
         $userId = DB::table('auth_user')->insertGetId([
             'username' => 'all-user',
             'first_name' => 'All',
             'last_name' => 'User',
             'email' => 'all-user@example.com',
-            'password' => 'secret789',
+            'password' => 'unused-real-login-password',
+            'merchant_notification_api_key' => 'all-user-api-key',
             'is_superuser' => false,
             'is_staff' => false,
             'is_active' => true,
@@ -382,9 +388,8 @@ class PaymentTokenEndpointTest extends TestCase
             ['auth_user_id' => $userId, 'redirect_payment_id' => $secondPaymentId],
         ]);
 
-        $jwtResponse = $this->postJson('/api/payments/search-token', [
-            'username' => 'all-user',
-            'password' => 'secret789',
+        $jwtResponse = $this->postJson('/api/payments/search-token', [], [
+            'HTTP_Authorization' => 'Bearer all-user-api-key',
         ]);
 
         $jwtResponse->assertOk();
@@ -403,15 +408,13 @@ class PaymentTokenEndpointTest extends TestCase
 
     public function test_it_lists_customer_payments_by_date_range_for_bearer_token_search(): void
     {
-        config()->set('services.payment_api.username', 'demo-user');
-        config()->set('services.payment_api.password', 'demo-pass');
-
         $userId = DB::table('auth_user')->insertGetId([
             'username' => 'client-date-user',
             'first_name' => 'Client',
             'last_name' => 'Date',
             'email' => 'client-date@example.com',
-            'password' => 'clientsecret',
+            'password' => 'unused-real-login-password',
+            'merchant_notification_api_key' => 'client-date-user-api-key',
             'is_superuser' => false,
             'is_staff' => false,
             'is_active' => true,
@@ -449,9 +452,8 @@ class PaymentTokenEndpointTest extends TestCase
             ['auth_user_id' => $userId, 'redirect_payment_id' => $paymentId],
         ]);
 
-        $jwtResponse = $this->postJson('/api/payments/search-token', [
-            'username' => 'client-date-user',
-            'password' => 'clientsecret',
+        $jwtResponse = $this->postJson('/api/payments/search-token', [], [
+            'HTTP_Authorization' => 'Bearer client-date-user-api-key',
         ]);
 
         $jwtResponse->assertOk();
@@ -477,7 +479,8 @@ class PaymentTokenEndpointTest extends TestCase
             'first_name' => 'Filtered',
             'last_name' => 'User',
             'email' => 'filtered-user@example.com',
-            'password' => 'filtered-pass',
+            'password' => 'unused-real-login-password',
+            'merchant_notification_api_key' => 'filtered-user-api-key',
             'is_superuser' => false,
             'is_staff' => false,
             'is_active' => true,
@@ -512,9 +515,8 @@ class PaymentTokenEndpointTest extends TestCase
             ['auth_user_id' => $userId, 'redirect_payment_id' => $pendingPaymentId],
         ]);
 
-        $jwtResponse = $this->postJson('/api/payments/search-token', [
-            'username' => 'filtered-user',
-            'password' => 'filtered-pass',
+        $jwtResponse = $this->postJson('/api/payments/search-token', [], [
+            'HTTP_Authorization' => 'Bearer filtered-user-api-key',
         ]);
 
         $jwtResponse->assertOk();
