@@ -200,11 +200,13 @@ class CybersourceController extends PaymentProviderController
                 $this->persistSuccessfulPayment($code, $paymentData, $paymentResult);
 
                 try {
-                    $notificationResult = app(CommerceNotificationService::class)->notifyPaymentSuccess($paymentData, $paymentResult);
-                    logger()->info('Merchant success notification sent', [
-                        'code' => $code,
-                        'notification' => $notificationResult,
-                    ]);
+                    $this->notifyMerchantWithUserToken(
+                        $paymentData,
+                        'AUTHORIZED',
+                        $booking->booking_code,
+                        (float) ($paymentData['amount'] ?? 0),
+                        (string) ($paymentData['currency'] ?? 'BOB')
+                    );
                 } catch (Throwable $e) {
                     logger()->warning('Merchant success notification failed', [
                         'code' => $code,
@@ -233,6 +235,22 @@ class CybersourceController extends PaymentProviderController
 
             $customerUrl = $this->resolveCustomerUrl($paymentData);
             $this->persistPaymentRecord($code, $paymentData, $paymentResult, $customerUrl, 3);
+
+            try {
+                $this->notifyMerchantWithUserToken(
+                    $paymentData,
+                    'ERROR',
+                    $booking->booking_code,
+                    (float) ($paymentData['amount'] ?? 0),
+                    (string) ($paymentData['currency'] ?? 'BOB'),
+                    'payment_not_authorized'
+                );
+            } catch (Throwable $e) {
+                logger()->warning('Merchant error notification failed', [
+                    'code' => $code,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
                 $this->paymentSessionService->forget($paymentSessionToken);
@@ -431,11 +449,14 @@ class CybersourceController extends PaymentProviderController
             $this->persistPaymentRecord($code, $paymentData, $validAuthData, $customerUrl, 3);
 
             try {
-                $notificationResult = app(CommerceNotificationService::class)->notifyPaymentError($paymentData, $validAuthData, '3ds_authentication_failed');
-                logger()->info('Merchant error notification sent for 3DS failure', [
-                    'code' => $code,
-                    'notification' => $notificationResult,
-                ]);
+                $this->notifyMerchantWithUserToken(
+                    $paymentData,
+                    'ERROR',
+                    $booking->booking_code,
+                    (float) ($paymentData['amount'] ?? 0),
+                    (string) ($paymentData['currency'] ?? 'BOB'),
+                    '3ds_authentication_failed'
+                );
             } catch (Throwable $e) {
                 logger()->warning('Merchant error notification failed for 3DS failure', [
                     'code' => $code,
@@ -499,6 +520,98 @@ class CybersourceController extends PaymentProviderController
                 'user_id' => $userId,
             ]
         );
+    }
+
+    private function notifyMerchantWithUserToken(array $paymentData, string $status, string $bookCode, float $amount, string $currency, ?string $reason = null): void
+    {
+        $sessionUser = auth()->user();
+        $userId = $paymentData['user_id'] ?? $paymentData['auth_user_id'] ?? $paymentData['customer_id'] ?? null;
+
+        $user = null;
+        if ($sessionUser !== null) {
+            $userId = $sessionUser->id ?? $sessionUser->auth_user_id ?? $sessionUser->customer_id ?? $userId;
+        }
+
+        if ($userId !== null && $userId !== '') {
+            $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
+            $user = DB::table($userTable)->where('id', (int) $userId)->first();
+        }
+
+        if ($user === null && isset($paymentData['email']) && is_string($paymentData['email'])) {
+            $userTable = DB::table('auth_user')->exists() ? 'auth_user' : 'users';
+            $user = DB::table($userTable)
+                ->whereRaw('LOWER(email) = ?', [strtolower(trim($paymentData['email']))])
+                ->first();
+        }
+
+        if ($user === null) {
+            logger()->warning('Merchant notification skipped: auth_user not found for payment', [
+                'payment_data' => $paymentData,
+            ]);
+            return;
+        }
+
+        $customerUrl = is_string($user->customer_url ?? null) ? trim((string) $user->customer_url) : null;
+        $merchantApiKey = is_string($user->merchant_notification_api_key ?? null) ? trim((string) $user->merchant_notification_api_key) : null;
+
+        if ($customerUrl === '' || $merchantApiKey === '') {
+            logger()->warning('Merchant notification skipped: missing customer_url or merchant_notification_api_key', [
+                'user_id' => $user->id ?? null,
+            ]);
+            return;
+        }
+
+        $baseUrl = rtrim($customerUrl, '/');
+        $tokenUrl = $baseUrl . '/api/webhooks/payments/token';
+
+        $tokenResponse = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $merchantApiKey,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->post($tokenUrl, [
+            'bookCode' => $bookCode,
+            'status' => $status,
+        ]);
+
+        if (! $tokenResponse->successful()) {
+            logger()->warning('Merchant notification token request failed', [
+                'url' => $tokenUrl,
+                'status' => $tokenResponse->status(),
+                'body' => $tokenResponse->body(),
+            ]);
+            return;
+        }
+
+        $tokenData = $tokenResponse->json();
+        $notificationToken = $tokenData['notification_token'] ?? null;
+
+        if (! is_string($notificationToken) || trim($notificationToken) === '') {
+            logger()->warning('Merchant notification token missing from response', [
+                'response' => $tokenData,
+            ]);
+            return;
+        }
+
+        $updateResponse = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $merchantApiKey,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ])->patch($baseUrl . '/api/webhooks/payments/' . $notificationToken, [
+            'bookCode' => $bookCode,
+            'status' => $status,
+            'paymentDate' => now()->toIso8601String(),
+            'amount' => $amount,
+            'currency' => strtoupper($currency),
+            'reason' => $reason,
+        ]);
+
+        if (! $updateResponse->successful()) {
+            logger()->warning('Merchant payment update failed', [
+                'token' => $notificationToken,
+                'status' => $updateResponse->status(),
+                'body' => $updateResponse->body(),
+            ]);
+        }
     }
 
     private function resolveCustomerUrl(array $paymentData): ?string
