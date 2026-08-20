@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(PaymentSessionService::class, function () {
-            return new PaymentSessionService();
+            return new PaymentSessionService(app(PaymentPersistenceService::class));
         });
 
         $this->app->singleton(PaymentPersistenceService::class, function () {

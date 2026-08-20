@@ -8,6 +8,12 @@ use InvalidArgumentException;
 
 class PaymentSessionService
 {
+    public function __construct(
+        private ?PaymentPersistenceService $paymentPersistenceService = null,
+    ) {
+        $this->paymentPersistenceService ??= app(PaymentPersistenceService::class);
+    }
+
     public function store(string $code, array $payload, int $minutes = 15): string
     {
         $token = $this->generateOpaqueToken();
@@ -61,6 +67,19 @@ class PaymentSessionService
         if ($expiresAt <= time()) {
             Cache::forget($cacheKey);
             throw new InvalidArgumentException('The payment session has expired.');
+        }
+
+        // The persisted redirect_payment record is the durable source of truth: once a
+        // result (paid or error) is recorded for this code, the session must stop
+        // resolving — even if some step of the payment flow never explicitly forgot
+        // this exact cache key (e.g. the original checkout-URL token is distinct from
+        // the internal session token minted once card details are submitted, and only
+        // the latter gets forgotten today).
+        $code = (string) ($payload['code'] ?? '');
+
+        if ($code !== '' && $this->paymentPersistenceService->findByCode($code) !== null) {
+            Cache::forget($cacheKey);
+            throw new InvalidArgumentException('The payment session is not available anymore.');
         }
 
         $status = strtolower((string) ($payload['status'] ?? 'pending'));

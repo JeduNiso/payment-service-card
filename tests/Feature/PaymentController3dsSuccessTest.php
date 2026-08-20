@@ -12,6 +12,8 @@ use Tests\TestCase;
 
 class PaymentController3dsSuccessTest extends TestCase
 {
+    use \Illuminate\Foundation\Testing\DatabaseTransactions;
+
     protected function tearDown(): void
     {
         Mockery::close();
