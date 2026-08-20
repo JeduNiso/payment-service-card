@@ -26,6 +26,8 @@ class PaymentTokenController extends Controller
             'amount' => ['required', 'numeric', 'gt:0'],
             'currency' => ['required', 'string', 'size:3'],
             'provider' => ['nullable', 'string', 'max:40'],
+            'language' => ['nullable', 'string', 'max:10'],
+            'descripcion' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
@@ -35,6 +37,8 @@ class PaymentTokenController extends Controller
                 $data['currency'],
                 (string) $request->bearerToken(),
                 $data['provider'] ?? null,
+                $data['language'] ?? null,
+                $data['descripcion'] ?? null,
             );
 
             return response()->json($result, 200);

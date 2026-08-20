@@ -1,41 +1,41 @@
 <x-payment.receipt-shell
-    title="Pago completado"
-    eyebrow="Comprobante de Pago"
+    :title="__('payment.invoice.title')"
+    :eyebrow="__('payment.invoice.eyebrow')"
     :reference="$reference"
     status="success"
-    status-label="PAGADO"
+    :status-label="__('payment.invoice.status')"
 >
     <div class="card-block tone-success">
-        <div class="section-title">Resumen del pago</div>
+        <div class="section-title">{{ __('payment.invoice.summary_title') }}</div>
         <div class="info-grid">
             <div class="info-item">
-                <div class="info-label">Método</div>
-                <div class="info-value">Tarjeta {{ $cardLast4 }}</div>
+                <div class="info-label">{{ __('payment.invoice.method') }}</div>
+                <div class="info-value">{{ __('payment.invoice.card_prefix') }} {{ $cardLast4 }}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Transacción</div>
+                <div class="info-label">{{ __('payment.invoice.transaction') }}</div>
                 <div class="info-value">{{ $transactionId }}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Fecha</div>
+                <div class="info-label">{{ __('payment.invoice.date') }}</div>
                 <div class="info-value">{{ $paidAt }}</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Contacto</div>
+                <div class="info-label">{{ __('payment.invoice.contact') }}</div>
                 <div class="info-value">{{ $email }}</div>
             </div>
         </div>
 
         <div class="total-box">
-            <div class="total-label">Total pagado</div>
+            <div class="total-label">{{ __('payment.invoice.total_paid') }}</div>
             <div class="total-value">{{ $currency }} {{ $amount }}</div>
         </div>
     </div>
 
-    <p class="lead-text">Gracias por su compra. Conserve este comprobante como respaldo de su transacción.</p>
+    <p class="lead-text">{{ __('payment.invoice.thanks') }}</p>
 
     <div class="actions">
-        <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir comprobante</button>
-        <a class="btn btn-secondary" href="{{ $homeUrl ?: '#' }}">Volver al inicio</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">{{ __('payment.invoice.print') }}</button>
+        <a class="btn btn-secondary" href="{{ $homeUrl ?: '#' }}">{{ __('payment.invoice.home') }}</a>
     </div>
 </x-payment.receipt-shell>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pago de servicio</title>
+    <title>{{ __('payment.checkout.title') }}</title>
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     @else
@@ -551,30 +551,30 @@
     <div class="layout">
         <aside class="panel summary">
             <div class="summary-header">
-                <span class="brand-pill"><span class="brand-dot"></span> Secure checkout</span>
+                <span class="brand-pill"><span class="brand-dot"></span> {{ __('payment.checkout.secure_checkout') }}</span>
             </div>
 
-            <h1>Pago de servicio</h1>
-            <div class="summary-subtitle">Realiza tus pagos de forma segura.</div>
+            <h1>{{ __('payment.checkout.title') }}</h1>
+            <div class="summary-subtitle">{{ __('payment.checkout.subtitle') }}</div>
 
             <div class="ticket">
                 <div class="ticket-header">
-                    <span>Referencia</span>
+                    <span>{{ __('payment.checkout.reference') }}</span>
                     <span>#{!! $booking['code'] ?? '---' !!}</span>
                 </div>
                 <div class="ticket-code">{{ strtoupper($booking['code'] ?? '---') }}</div>
 
                 <div class="meta-grid">
                     <div class="meta-item">
-                        <div class="meta-label">Servicio</div>
-                        <div class="meta-value">{{ $booking['description'] ?? $booking['service'] ?? 'Pago de servicio' }}</div>
+                        <div class="meta-label">{{ __('payment.checkout.service') }}</div>
+                        <div class="meta-value">{{ $booking['description'] ?? $booking['service'] ?? __('payment.checkout.default_service') }}</div>
                     </div>
                 </div>
             </div>
 
             <div class="total-box">
                 <div>
-                    <div class="total-label">Total a pagar</div>
+                    <div class="total-label">{{ __('payment.checkout.total_due') }}</div>
                 </div>
                 <div class="total-value">{{ number_format((float) ($booking['amount'] ?? 0), 2, ',', '.') }} {{ $booking['currency'] ?? 'BOB' }}</div>
             </div>
@@ -583,14 +583,14 @@
         <main class="panel checkout">
             <div class="header-row">
                 <div>
-                    <div class="eyebrow">Checkout</div>
-                    <h2>Datos del pago</h2>
+                    <div class="eyebrow">{{ __('payment.checkout.eyebrow') }}</div>
+                    <h2>{{ __('payment.checkout.heading') }}</h2>
                 </div>
-                <span class="secure-tag">🔒 Pago seguro</span>
+                <span class="secure-tag">{{ __('payment.checkout.secure_tag') }}</span>
             </div>
 
             @if (!$valid)
-                <div class="alert">⚠️ {{ $error ?? 'La sesión de pago ya no es válida.' }}</div>
+                <div class="alert">⚠️ {{ $error ?? __('payment.checkout.expired_message') }}</div>
             @else
                 @if (session('payment_error'))
                     <div class="alert">⚠️ {{ session('payment_error') }}</div>
@@ -601,16 +601,16 @@
                         <div class="card-face card-front">
                             <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                                 <div class="card-chip"></div>
-                                <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;opacity:0.8;" id="cardBrandLabel">Tarjeta</div>
+                                <div style="font-size:0.72rem;letter-spacing:0.14em;text-transform:uppercase;opacity:0.8;" id="cardBrandLabel">{{ __('payment.checkout.card_placeholder_type') }}</div>
                             </div>
                             <div class="card-number" id="cardNumberField">•••• •••• •••• ••••</div>
                             <div class="card-meta">
                                 <div>
-                                    <div class="card-label">Titular</div>
-                                    <div class="card-name" id="cardNameField">NOMBRE Y APELLIDO</div>
+                                    <div class="card-label">{{ __('payment.checkout.card_label_holder') }}</div>
+                                    <div class="card-name" id="cardNameField">{{ __('payment.checkout.card_placeholder_name') }}</div>
                                 </div>
                                 <div>
-                                    <div class="card-label">Expira</div>
+                                    <div class="card-label">{{ __('payment.checkout.card_label_expires') }}</div>
                                     <div class="card-expiry" id="cardExpiryField">MM/AA</div>
                                 </div>
                             </div>
@@ -618,7 +618,7 @@
                         <div class="card-face card-back">
                             <div class="card-bar"></div>
                             <div class="card-signature">
-                                <span>CVV</span>
+                                <span>{{ __('payment.checkout.field_cvv') }}</span>
                                 <strong id="cardCvvField">•••</strong>
                             </div>
                         </div>
@@ -648,18 +648,18 @@
                 <form method="POST" action="{{ url('/payments/' . rawurlencode($token)) }}">
                     @csrf
                     <div class="field">
-                        <label for="card_number">Número de tarjeta</label>
+                        <label for="card_number">{{ __('payment.checkout.field_card_number') }}</label>
                         <input id="card_number" name="card_number" type="text" inputmode="numeric" maxlength="19" autocomplete="cc-number" placeholder="1234 5678 9012 3456" value="{{ old('card_number', $prefill['card_number'] ?? '') }}" required>
                     </div>
 
                     <div class="field">
-                        <label for="cardholder_name">Nombre del titular</label>
-                        <input id="cardholder_name" name="cardholder_name" type="text" autocomplete="cc-name" placeholder="Nombre y apellido" value="{{ old('cardholder_name', $prefill['cardholder_name'] ?? '') }}" required>
+                        <label for="cardholder_name">{{ __('payment.checkout.field_cardholder_name') }}</label>
+                        <input id="cardholder_name" name="cardholder_name" type="text" autocomplete="cc-name" placeholder="{{ __('payment.checkout.field_name_placeholder') }}" value="{{ old('cardholder_name', $prefill['cardholder_name'] ?? '') }}" required>
                     </div>
 
                     <div class="field-group">
                         <div class="field">
-                            <label for="expiry_month">Mes</label>
+                            <label for="expiry_month">{{ __('payment.checkout.field_month') }}</label>
                             <select id="expiry_month" name="expiry_month" required>
                                 <option value="" @selected(old('expiry_month', $prefill['expiry_month'] ?? '') === '') disabled hidden>MM</option>
                                 @for ($month = 1; $month <= 12; $month++)
@@ -668,7 +668,7 @@
                             </select>
                         </div>
                         <div class="field">
-                            <label for="expiry_year">Año</label>
+                            <label for="expiry_year">{{ __('payment.checkout.field_year') }}</label>
                             <select id="expiry_year" name="expiry_year" required>
                                 <option value="" @selected(old('expiry_year', $prefill['expiry_year'] ?? '') === '') disabled hidden>AAAA</option>
                                 @for ($year = (int) date('Y'); $year <= (int) date('Y') + 14; $year++)
@@ -680,45 +680,45 @@
 
                     <div class="field-group">
                         <div class="field">
-                            <label for="cvv">CVV</label>
+                            <label for="cvv">{{ __('payment.checkout.field_cvv') }}</label>
                             <input id="cvv" name="cvv" type="password" inputmode="numeric" maxlength="4" autocomplete="cc-csc" placeholder="123" value="{{ old('cvv', $prefill['cvv'] ?? '') }}" required>
                         </div>
                         <div class="field">
-                            <label for="billing_email">Correo electrónico</label>
+                            <label for="billing_email">{{ __('payment.checkout.field_email') }}</label>
                             <input id="billing_email" name="billing_email" type="email" autocomplete="email" placeholder="tucorreo@ejemplo.com" value="{{ old('billing_email', $prefill['billing_email'] ?? '') }}" required>
                         </div>
                     </div>
 
                     <div class="field-group">
                         <div class="field">
-                            <label for="billing_first_name">Nombre</label>
+                            <label for="billing_first_name">{{ __('payment.checkout.field_first_name') }}</label>
                             <input id="billing_first_name" name="billing_first_name" type="text" value="{{ old('billing_first_name', $prefill['billing_first_name'] ?? '') }}">
                         </div>
                         <div class="field">
-                            <label for="billing_last_name">Apellido</label>
+                            <label for="billing_last_name">{{ __('payment.checkout.field_last_name') }}</label>
                             <input id="billing_last_name" name="billing_last_name" type="text" value="{{ old('billing_last_name', $prefill['billing_last_name'] ?? '') }}">
                         </div>
                     </div>
 
                     <div class="field">
-                        <label for="billing_address1">Dirección</label>
+                        <label for="billing_address1">{{ __('payment.checkout.field_address') }}</label>
                         <input id="billing_address1" name="billing_address1" type="text" value="{{ old('billing_address1', $prefill['billing_address1'] ?? '') }}">
                     </div>
 
                     <div class="field-group">
                         <div class="field">
-                            <label for="billing_locality">Ciudad</label>
+                            <label for="billing_locality">{{ __('payment.checkout.field_city') }}</label>
                             <input id="billing_locality" name="billing_locality" type="text" value="{{ old('billing_locality', $prefill['billing_locality'] ?? '') }}">
                         </div>
                         <div class="field">
-                            <label for="billing_country">País</label>
+                            <label for="billing_country">{{ __('payment.checkout.field_country') }}</label>
                             <input id="billing_country" name="billing_country" type="text" maxlength="2" value="{{ old('billing_country', $prefill['billing_country'] ?? '') }}">
                         </div>
                     </div>
 
                     <div class="submit-row">
-                        <div class="mini-note">Tus datos se usan sólo para procesar este pago.</div>
-                        <button class="btn" type="submit">Pagar ahora</button>
+                        <div class="mini-note">{{ __('payment.checkout.privacy_note') }}</div>
+                        <button class="btn" type="submit">{{ __('payment.checkout.submit_button') }}</button>
                     </div>
                 </form>
             @endif
@@ -726,6 +726,8 @@
     </div>
 
     <script>
+        const i18nCardType = {{ \Illuminate\Support\Js::from(__('payment.checkout.card_placeholder_type')) }};
+        const i18nCardName = {{ \Illuminate\Support\Js::from(__('payment.checkout.card_placeholder_name')) }};
         const cardNumberInput = document.getElementById('card_number');
         const cardholderInput = document.getElementById('cardholder_name');
         const expiryMonthInput = document.getElementById('expiry_month');
@@ -760,7 +762,7 @@
             if (/^4/.test(digits)) return 'Visa';
             if (/^(5[1-5]|2[2-7])/.test(digits)) return 'Mastercard';
             if (/^3[47]/.test(digits)) return 'Amex';
-            return 'Tarjeta';
+            return i18nCardType;
         }
 
         function updateCardPreview() {
@@ -786,7 +788,7 @@
         if (cardholderInput) {
             cardholderInput.addEventListener('input', (event) => {
                 const value = event.target.value.trim();
-                cardNameOutput.textContent = value || 'NOMBRE Y APELLIDO';
+                cardNameOutput.textContent = value || i18nCardName;
             });
         }
 

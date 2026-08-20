@@ -22,12 +22,16 @@ class PaymentCheckoutController extends Controller
         $payment = $this->getPaymentSession($token);
 
         if ($payment === null) {
+            app()->setLocale('es');
+
             return view('payment.checkout', [
                 'token' => $token,
                 'valid' => false,
-                'error' => 'La sesión de pago ya no es válido o ha expirado.',
+                'error' => __('payment.checkout.expired_message'),
             ]);
         }
+
+        app()->setLocale($payment['language'] ?? 'es');
 
         $bookingCode = strtoupper((string) ($payment['code'] ?? ''));
 
@@ -38,6 +42,7 @@ class PaymentCheckoutController extends Controller
                 'code' => $bookingCode,
                 'amount' => (float) ($payment['amount'] ?? $payment['total_amount'] ?? 0),
                 'currency' => $payment['currency'] ?? 'BOB',
+                'description' => $payment['description'] ?? null,
             ],
             'payment' => $payment,
         ]);
@@ -48,17 +53,21 @@ class PaymentCheckoutController extends Controller
         $payment = $this->getPaymentSession($token);
 
         if ($payment === null) {
+            app()->setLocale('es');
+
             return view('payment.checkout', [
                 'token' => $token,
                 'valid' => false,
-                'error' => 'La sesión de pago ya no es válido o ha expirado.',
+                'error' => __('payment.checkout.expired_message'),
             ]);
         }
+
+        app()->setLocale($payment['language'] ?? 'es');
 
         $bookingCode = strtoupper((string) ($payment['code'] ?? ''));
 
         if ($bookingCode === '') {
-            return back()->withInput()->with('payment_error', 'No se pudo recuperar el código de la reserva.');
+            return back()->withInput()->with('payment_error', __('payment.checkout.missing_booking_code'));
         }
 
         $provider = $this->paymentRouterService->resolveProvider(
@@ -71,7 +80,7 @@ class PaymentCheckoutController extends Controller
 
         if ($response instanceof JsonResponse) {
             $payload = $response->getData(true);
-            $message = is_array($payload) ? ($payload['message'] ?? 'No se pudo completar el pago.') : 'No se pudo completar el pago.';
+            $message = is_array($payload) ? ($payload['message'] ?? __('payment.checkout.generic_payment_error')) : __('payment.checkout.generic_payment_error');
 
             return redirect()->back()->withInput()->with('payment_error', $message);
         }

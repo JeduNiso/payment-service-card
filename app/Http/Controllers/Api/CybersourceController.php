@@ -124,6 +124,8 @@ class CybersourceController extends PaymentProviderController
             'user' => $paymentSession['user'] ?? null,
             'email' => $paymentSession['email'] ?? ($data['billing_email'] ?? null),
             'status' => 'pending',
+            'language' => $paymentSession['language'] ?? 'es',
+            'description' => $paymentSession['description'] ?? null,
         ], 15);
 
         cache()->put("payment_token_for_code:{$code}", $sessionToken, now()->addMinutes(15));
@@ -177,6 +179,8 @@ class CybersourceController extends PaymentProviderController
             }
         }
 
+        app()->setLocale($paymentData['language'] ?? 'es');
+
         $browserInfo = [
             'acceptHeader'    => $request->query('browserAcceptHeader', 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'),
             'language'        => $request->query('browserLanguage', 'es-BO'),
@@ -228,7 +232,7 @@ class CybersourceController extends PaymentProviderController
 
             $errorReason = $paymentResult['errorInformation']['message']
                 ?? $paymentResult['message']
-                ?? 'Error desconocido al procesar el pago.';
+                ?? __('payment.error.default_processing_reason');
             $errorCode = $paymentResult['errorInformation']['reason']
                 ?? $paymentResult['reason']
                 ?? $paymentStatus;
@@ -259,7 +263,7 @@ class CybersourceController extends PaymentProviderController
 
             return response(
                 $this->render_error_html(
-                    'Error al Procesar el Pago',
+                    __('payment.error.title_processing'),
                     $errorReason,
                     $errorCode,
                     $booking->booking_code,
@@ -284,7 +288,7 @@ class CybersourceController extends PaymentProviderController
             return $this->render_stepup_html($code, $stepUpUrl, $stepUpToken);
         }
 
-        $authFailure = $this->resolveAuthenticationFailure($enrollmentData, 'La autenticación 3DS no fue exitosa.');
+        $authFailure = $this->resolveAuthenticationFailure($enrollmentData, __('payment.error.default_3ds_reason'));
 
         $customerUrl = $this->resolveCustomerUrl($paymentData);
         $this->persistPaymentRecord($code, $paymentData, $enrollmentData, $customerUrl, 3);
@@ -311,7 +315,7 @@ class CybersourceController extends PaymentProviderController
 
         return response(
             $this->render_error_html(
-                'Error en Autenticación 3DS',
+                __('payment.error.title_3ds_failed'),
                 $authFailure['message'],
                 $authFailure['code'],
                 $booking->booking_code,
@@ -357,6 +361,8 @@ class CybersourceController extends PaymentProviderController
                 ], 422);
             }
         }
+
+        app()->setLocale($paymentData['language'] ?? 'es');
 
         $authTransactionId = $paymentData['authentication_transaction_id'] ?? $request->input('TransactionId');
 
@@ -409,7 +415,7 @@ class CybersourceController extends PaymentProviderController
             } else {
                 $errorReason = $paymentResult['errorInformation']['message']
                     ?? $paymentResult['message']
-                    ?? 'Error desconocido al procesar el pago.';
+                    ?? __('payment.error.default_processing_reason');
                 $errorCode = $paymentResult['errorInformation']['reason']
                     ?? $paymentResult['reason']
                     ?? $paymentStatus;
@@ -439,7 +445,7 @@ class CybersourceController extends PaymentProviderController
                 $this->paymentSessionService->forgetByCode($code);
 
                 $html = $this->render_error_html(
-                    'Error al Procesar el Pago',
+                    __('payment.error.title_processing'),
                     $errorReason,
                     $errorCode,
                     $booking->booking_code,
@@ -447,7 +453,7 @@ class CybersourceController extends PaymentProviderController
                 );
             }
         } else {
-            $errorInfo = $this->resolveAuthenticationFailure($validAuthData, 'La autenticación 3DS no fue exitosa.');
+            $errorInfo = $this->resolveAuthenticationFailure($validAuthData, __('payment.error.default_3ds_reason'));
 
             if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
                 $this->paymentSessionService->forget($paymentSessionToken);
@@ -478,7 +484,7 @@ class CybersourceController extends PaymentProviderController
             $this->paymentSessionService->forgetByCode($code);
 
             $html = $this->render_error_html(
-                'Error en Autenticación 3DS',
+                __('payment.error.title_3ds_failed'),
                 $errorInfo['message'],
                 $errorInfo['code'],
                 $booking->booking_code,
