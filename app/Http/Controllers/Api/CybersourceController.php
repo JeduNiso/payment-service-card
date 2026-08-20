@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Booking;
+use App\Services\Commerce\CommerceNotificationService;
 use App\Services\CyberSource\CyberSourceService;
 use App\Services\Payments\PaymentPersistenceService;
 use App\Services\Payments\PaymentService;
@@ -198,6 +199,19 @@ class CybersourceController extends PaymentProviderController
                 $booking->update(['status' => 'confirmed']);
                 $this->persistSuccessfulPayment($code, $paymentData, $paymentResult);
 
+                try {
+                    $notificationResult = app(CommerceNotificationService::class)->notifyPaymentSuccess($paymentData, $paymentResult);
+                    logger()->info('Merchant success notification sent', [
+                        'code' => $code,
+                        'notification' => $notificationResult,
+                    ]);
+                } catch (Throwable $e) {
+                    logger()->warning('Merchant success notification failed', [
+                        'code' => $code,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
                 if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
                     $this->paymentSessionService->forget($paymentSessionToken);
                 }
@@ -253,6 +267,22 @@ class CybersourceController extends PaymentProviderController
         }
 
         $authFailure = $this->resolveAuthenticationFailure($enrollmentData, 'La autenticación 3DS no fue exitosa.');
+
+        $customerUrl = $this->resolveCustomerUrl($paymentData);
+        $this->persistPaymentRecord($code, $paymentData, $enrollmentData, $customerUrl, 3);
+
+        try {
+            $notificationResult = app(CommerceNotificationService::class)->notifyPaymentError($paymentData, $enrollmentData, '3ds_authentication_failed');
+            logger()->info('Merchant error notification sent for 3DS failure', [
+                'code' => $code,
+                'notification' => $notificationResult,
+            ]);
+        } catch (Throwable $e) {
+            logger()->warning('Merchant error notification failed for 3DS failure', [
+                'code' => $code,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
             $this->paymentSessionService->forget($paymentSessionToken);
@@ -333,6 +363,19 @@ class CybersourceController extends PaymentProviderController
                 $booking->update(['status' => 'confirmed']);
                 $this->persistSuccessfulPayment($code, $paymentData, $paymentResult);
 
+                try {
+                    $notificationResult = app(CommerceNotificationService::class)->notifyPaymentSuccess($paymentData, $paymentResult);
+                    logger()->info('Merchant success notification sent', [
+                        'code' => $code,
+                        'notification' => $notificationResult,
+                    ]);
+                } catch (Throwable $e) {
+                    logger()->warning('Merchant success notification failed', [
+                        'code' => $code,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
                 if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
                     $this->paymentSessionService->forget($paymentSessionToken);
                 }
@@ -350,6 +393,19 @@ class CybersourceController extends PaymentProviderController
 
                 $customerUrl = $this->resolveCustomerUrl($paymentData);
                 $this->persistPaymentRecord($code, $paymentData, $paymentResult, $customerUrl, 3);
+
+                try {
+                    $notificationResult = app(CommerceNotificationService::class)->notifyPaymentError($paymentData, $paymentResult, 'payment_not_authorized');
+                    logger()->info('Merchant error notification sent', [
+                        'code' => $code,
+                        'notification' => $notificationResult,
+                    ]);
+                } catch (Throwable $e) {
+                    logger()->warning('Merchant error notification failed', [
+                        'code' => $code,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
 
                 if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
                     $this->paymentSessionService->forget($paymentSessionToken);
@@ -373,6 +429,19 @@ class CybersourceController extends PaymentProviderController
 
             $customerUrl = $this->resolveCustomerUrl($paymentData);
             $this->persistPaymentRecord($code, $paymentData, $validAuthData, $customerUrl, 3);
+
+            try {
+                $notificationResult = app(CommerceNotificationService::class)->notifyPaymentError($paymentData, $validAuthData, '3ds_authentication_failed');
+                logger()->info('Merchant error notification sent for 3DS failure', [
+                    'code' => $code,
+                    'notification' => $notificationResult,
+                ]);
+            } catch (Throwable $e) {
+                logger()->warning('Merchant error notification failed for 3DS failure', [
+                    'code' => $code,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             if (is_string($paymentSessionToken) && $paymentSessionToken !== '') {
                 $this->paymentSessionService->forget($paymentSessionToken);
