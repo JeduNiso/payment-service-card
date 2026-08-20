@@ -589,17 +589,17 @@ class CybersourceController extends PaymentProviderController
             return;
         }
 
-        $customerUrl = is_string($user->customer_url ?? null) ? trim((string) $user->customer_url) : null;
+        $notificationUrl = is_string($user->notification_url ?? null) ? trim((string) $user->notification_url) : null;
         $merchantApiKey = is_string($user->merchant_notification_api_key ?? null) ? trim((string) $user->merchant_notification_api_key) : null;
 
-        if ($customerUrl === '' || $merchantApiKey === '') {
-            logger()->warning('Merchant notification skipped: missing customer_url or merchant_notification_api_key', [
+        if ($notificationUrl === '' || $notificationUrl === null || $merchantApiKey === '') {
+            logger()->warning('Merchant notification skipped: missing notification_url or merchant_notification_api_key', [
                 'user_id' => $user->id ?? null,
             ]);
             return;
         }
 
-        $baseUrl = rtrim($customerUrl, '/');
+        $baseUrl = rtrim($notificationUrl, '/');
         $tokenUrl = $baseUrl . '/api/webhooks/payments/token';
 
         $tokenResponse = Http::withHeaders([

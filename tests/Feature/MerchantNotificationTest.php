@@ -14,11 +14,17 @@ use Tests\TestCase;
 /**
  * Covers the merchant-notification contract described in PROJECT_SUMMARY.md:
  *
- *   1. POST  {customer_url}/api/webhooks/payments/token   with only {bookCode}
- *   2. PATCH {customer_url}/api/webhooks/payments/{token} with the final status
+ *   1. POST  {notification_url}/api/webhooks/payments/token   with only {bookCode}
+ *   2. PATCH {notification_url}/api/webhooks/payments/{token} with the final status
  *
- * using the per-merchant `customer_url` / `merchant_notification_api_key`
+ * using the per-merchant `notification_url` / `merchant_notification_api_key`
  * stored on `auth_user` — never a global fixed key.
+ *
+ * notification_url is deliberately its own column, separate from customer_url:
+ * customer_url doubles as a general "where does this customer end up" field that
+ * other flows (e.g. urlToRedirect on /api/payments/session) also write to, and an
+ * earlier version of this test collapsed the two — letting a payment's
+ * urlToRedirect silently overwrite a merchant's real webhook URL.
  *
  * Historically this contract was only implemented by
  * CybersourceController::notifyMerchantWithUserToken(), while two of the four
@@ -44,7 +50,7 @@ class MerchantNotificationTest extends TestCase
             'first_name' => 'Merchant',
             'last_name' => 'Test',
             'email' => 'merchant-' . uniqid() . '@example.com',
-            'customer_url' => 'https://merchant.example.test',
+            'notification_url' => 'https://merchant.example.test',
             'merchant_notification_api_key' => 'merchant-secret-key-' . uniqid(),
         ], $overrides));
     }
@@ -551,5 +557,87 @@ class MerchantNotificationTest extends TestCase
     public function test_services_config_no_longer_exposes_a_global_merchant_notification_fallback(): void
     {
         $this->assertNull(config('services.merchant_notifications'));
+    }
+
+    /**
+     * Regression test: resolveCustomerUrl() falls back to payment_data.redirect_url
+     * (the value carried from /api/payments/session's urlToRedirect), and that value
+     * used to get persisted straight into auth_user.customer_url. When
+     * notifyMerchantWithUserToken() read the webhook target from that same
+     * customer_url column, a payment made with urlToRedirect silently overwrote the
+     * merchant's real webhook URL with the customer-facing redirect URL instead.
+     * notification_url is a separate column specifically so this can't happen.
+     */
+    public function test_urltoredirect_does_not_overwrite_the_merchants_notification_url(): void
+    {
+        $user = $this->makeMerchantUser([
+            'customer_url' => 'https://old-customer-redirect.example.test',
+        ]);
+        $this->fakeMerchantEndpoints();
+
+        $paymentService = Mockery::mock(PaymentService::class);
+        $cyberSourceService = Mockery::mock(CyberSourceService::class);
+        $paymentSessionService = Mockery::mock(PaymentSessionService::class);
+
+        $payload = [
+            'payment_session_token' => 'valid-token',
+            'context' => ['seqNum' => 'redenlace_40003742'],
+            'billing_email' => $user->email,
+            'user_id' => $user->getKey(),
+            'amount' => 125.5,
+            'currency' => 'BOB',
+            // Carried from /api/payments/session's urlToRedirect — must never be
+            // mistaken for the merchant's webhook URL.
+            'redirect_url' => 'https://checkout-thank-you-page.example.test',
+        ];
+
+        $booking = Mockery::mock(\App\Models\Booking::class)->makePartial();
+        $booking->booking_code = 'URLREDIR-OK';
+        $booking->status = 'pending';
+        $booking->total_amount = 125.5;
+        $booking->cybersource_reference_id = 'ref-urlredir-ok';
+        $booking->cybersource_payment_data = $payload;
+
+        $controller = new class($paymentService, $cyberSourceService, $paymentSessionService) extends CybersourceController {
+            private $booking;
+
+            public function setBooking($booking): void
+            {
+                $this->booking = $booking;
+            }
+
+            protected function resolveBooking(string $code): \App\Models\Booking
+            {
+                return $this->booking;
+            }
+        };
+        $controller->setBooking($booking);
+
+        $paymentSessionService->shouldReceive('get')->with('valid-token')->andReturn($payload);
+        $cyberSourceService->shouldReceive('enrollmentSetup')
+            ->with('ref-urlredir-ok', $payload, $booking, Mockery::type('array'))
+            ->andReturn(response()->json(['status' => 'AUTHENTICATION_SUCCESSFUL']));
+        $cyberSourceService->shouldReceive('paymentWith3dsDynamic')
+            ->with($payload, $booking, Mockery::type('array'), 'NO_3DS', $payload['context'])
+            ->andReturn(response()->json(['status' => 'AUTHORIZED', 'id' => 'pay-urlredir-ok']));
+
+        $booking->shouldReceive('update')->with(['status' => 'confirmed'])->once()->andReturnTrue();
+        $paymentSessionService->shouldReceive('forget')->with('valid-token')->once();
+        $paymentSessionService->shouldReceive('forgetByCode')->with('URLREDIR-OK')->once();
+
+        $request = Request::create('/api/payments/URLREDIR-OK/enrollment-callback', 'POST');
+        $response = $controller->enrollment_callback('URLREDIR-OK', $request);
+
+        $this->assertSame(200, $response->getStatusCode());
+        // Both webhook calls must still land on the merchant's real notification_url,
+        // never on redirect_url or the (now stale) customer_url.
+        $this->assertTokenCreatedWithOnlyBookCode($user->merchant_notification_api_key, 'URLREDIR-OK');
+        $this->assertPaymentPatchedWithFinalStatus($user->merchant_notification_api_key, 'notif-token-abc', 'URLREDIR-OK', 'AUTHORIZED');
+
+        $this->assertSame(
+            'https://merchant.example.test',
+            $user->fresh()->notification_url,
+            'notification_url must stay untouched by the payment flow.'
+        );
     }
 }
