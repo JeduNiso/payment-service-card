@@ -3,18 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Services\Payments\PaymentCustomerSearchService;
-use App\Services\Payments\PaymentSearchTokenService;
 use App\Services\Payments\PaymentTokenService;
+use App\Services\Payments\ResolvesMerchantApiKey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
 
 class PaymentTokenController extends Controller
 {
+    use ResolvesMerchantApiKey;
+
     public function __construct(
         private readonly PaymentTokenService $paymentTokenService,
         private readonly PaymentCustomerSearchService $paymentCustomerSearchService,
-        private readonly PaymentSearchTokenService $paymentSearchTokenService,
     ) {
     }
 
@@ -45,17 +46,6 @@ class PaymentTokenController extends Controller
         }
     }
 
-    public function issueSearchToken(Request $request): JsonResponse
-    {
-        try {
-            $token = $this->paymentSearchTokenService->issue((string) $request->bearerToken());
-
-            return response()->json(['success' => true, 'token' => $token, 'expires_in' => 900], 200);
-        } catch (InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 401);
-        }
-    }
-
     public function search(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -66,17 +56,10 @@ class PaymentTokenController extends Controller
             'bookCode' => ['nullable', 'string', 'max:100'],
             'book_code' => ['nullable', 'string', 'max:100'],
             'payment_code' => ['nullable', 'string', 'max:100'],
-            'token' => ['nullable', 'string'],
         ]);
 
         try {
-            $token = $request->bearerToken() ?: (string) ($data['token'] ?? '');
-
-            if ($token === '') {
-                throw new InvalidArgumentException('Token no proporcionado. Envíe el token en la cabecera Authorization: Bearer <token>.');
-            }
-
-            $user = $this->paymentSearchTokenService->validate($token);
+            $user = $this->resolveUserByApiKey((string) $request->bearerToken());
 
             $fromDate = $data['from_date'] ?? $data['fromDate'] ?? null;
             $toDate = $data['to_date'] ?? $data['toDate'] ?? null;

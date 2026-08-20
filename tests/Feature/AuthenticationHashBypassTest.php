@@ -21,9 +21,9 @@ use Tests\TestCase;
  * column holds real plaintext (never hashed), so it must never fire when the stored value
  * is actually a recognized hash.
  *
- * /api/payments/session and /api/payments/search-token no longer accept username/password
- * at all — they were migrated to `Authorization: Bearer <merchant_notification_api_key>`
- * (see PaymentSessionCodeReuseTest / PaymentTokenEndpointTest), which has no password/hash
+ * /api/payments/session and /api/payments/search no longer accept username/password at all
+ * — they were migrated to `Authorization: Bearer <merchant_notification_api_key>` (see
+ * PaymentSessionCodeReuseTest / PaymentTokenEndpointTest), which has no password/hash
  * comparison to bypass in the first place. PaymentCustomerSearchService still uses
  * username/password internally (it isn't wired to any route today), so it keeps the same
  * fix and the same regression coverage here.

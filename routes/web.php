@@ -13,10 +13,6 @@ Route::post('/api/payments/session', [PaymentTokenController::class, 'issue'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.token.issue');
 
-Route::post('/api/payments/search-token', [PaymentTokenController::class, 'issueSearchToken'])
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
-    ->name('payment.search.token.issue');
-
 Route::post('/api/payments/search', [PaymentTokenController::class, 'search'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('payment.customer.search');

@@ -8,7 +8,6 @@ use App\Services\Payments\MockLegacyUserPermissionProvider;
 use App\Services\Payments\PaymentCustomerSearchService;
 use App\Services\Payments\PaymentPersistenceService;
 use App\Services\Payments\PaymentRouterService;
-use App\Services\Payments\PaymentSearchTokenService;
 use App\Services\Payments\PaymentService;
 use App\Services\Payments\PaymentSessionService;
 use App\Services\Payments\PaymentTokenService;
@@ -51,10 +50,6 @@ class AppServiceProvider extends ServiceProvider
                 app(PaymentRouterService::class),
                 app(PaymentPersistenceService::class)
             );
-        });
-
-        $this->app->singleton(PaymentSearchTokenService::class, function () {
-            return new PaymentSearchTokenService();
         });
 
         $this->app->singleton(CyberSourceService::class, function () {
