@@ -570,7 +570,6 @@ class CybersourceController extends PaymentProviderController
             'Content-Type' => 'application/json',
         ])->post($tokenUrl, [
             'bookCode' => $bookCode,
-            'status' => $status,
         ]);
 
         if (! $tokenResponse->successful()) {
