@@ -844,118 +844,30 @@ class CybersourceController extends PaymentProviderController
 
     private function render_invoice_html(Booking $booking, array $paymentData, array $paymentResult): string
     {
-        $transactionId = e($paymentResult['id'] ?? '—');
         $cardLast4 = preg_replace('/\D+/', '', (string) ($paymentData['card_number'] ?? ''));
         $cardLast4 = $cardLast4 !== '' ? '**** ' . substr($cardLast4, -4) : '—';
-        $amount = number_format((float) ($booking->total_amount ?? 0), 2, ',', '.');
-        $reference = e($booking->booking_code ?? '—');
-        $email = e($paymentData['billing_email'] ?? ($booking->contact_email ?? '—'));
-        $now = now()->format('d/m/Y H:i');
-        $resolvedCustomerUrl = $this->resolveHomeUrlFromCustomerUrl($paymentData);
-        $homeUrl = e($resolvedCustomerUrl);
 
-        return '<!DOCTYPE html>'
-            . '<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Pago completado</title>'
-            . '<style>'
-            . ':root{--bg:#eef4f7;--card:#ffffff;--panel:#0f172a;--primary:#48c9a7;--primary-deep:#1b8f6f;--primary-soft:#eafaf4;--muted:#64748b;--line:#dfeae3;--text:#12231d;--danger:#e05656;--danger-soft:#fff0f0;--shadow:0 24px 60px rgba(15,23,42,.12);}'
-            . '*{box-sizing:border-box;margin:0;padding:0;}'
-            . 'body{font-family:"Segoe UI",Tahoma,sans-serif;background:linear-gradient(180deg,#eef4f8 0%,#edf4f2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;color:var(--text);}'
-            . '.wrap{width:min(820px,100%);}'
-            . '.card{background:rgba(255,255,255,.82);backdrop-filter:blur(10px);border:1px solid rgba(148,163,184,.18);border-radius:28px;overflow:hidden;box-shadow:var(--shadow);}'
-            . '.topbar{background:linear-gradient(135deg,#0f172a 0%,#111d2d 42%,#142c3d 100%);color:#fff;padding:28px 30px 24px;display:flex;justify-content:space-between;align-items:center;gap:18px;}'
-            . '.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.72);}'
-            . '.ref{font-size:clamp(1.8rem,3vw,2.8rem);font-weight:800;letter-spacing:-.05em;margin-top:8px;}'
-            . '.status{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:999px;background:rgba(72,201,167,.14);border:1px solid rgba(72,201,167,.32);font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#d9fff1;}'
-            . '.status::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--primary);box-shadow:0 0 14px rgba(72,201,167,.9);}'
-            . '.content{padding:30px;}'
-            . '.summary{padding:22px 22px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#f8fbf8,#f4faf5);}'
-            . '.summary-title{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1b8f6f;margin-bottom:16px;}'
-            . '.grid{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:18px 22px;}'
-            . '.item{padding:14px 14px;background:#ffffff;border:1px solid rgba(148,163,184,.18);border-radius:14px;}'
-            . '.k{font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:#64748b;margin-bottom:8px;}'
-            . '.v{font-size:1rem;font-weight:700;color:var(--text);word-break:break-word;}'
-            . '.total{margin-top:22px;padding:20px 22px;border-radius:18px;background:linear-gradient(180deg,var(--primary-soft),#e8f5ee);border:1px solid rgba(27,143,111,.3);display:flex;justify-content:space-between;align-items:center;gap:16px;}'
-            . '.total-label{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#1b8f6f;}'
-            . '.total-amount{font-size:clamp(2rem,4vw,2.7rem);font-weight:800;letter-spacing:-.05em;color:#183d30;}'
-            . '.footer{padding:22px 30px 30px;text-align:center;}'
-            . '.footer p{font-size:14px;line-height:1.6;color:#52656d;margin:0 0 18px;}'
-            . '.actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;}'
-            . '.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 20px;border-radius:12px;text-decoration:none;font-weight:700;font-size:15px;border:1px solid transparent;cursor:pointer;transition:transform .2s ease, box-shadow .2s ease;}'
-            . '.btn:hover{transform:translateY(-1px);}'
-            . '.btn-primary{background:linear-gradient(135deg,#1b8f6f,#0f6d55);color:#fff;box-shadow:0 12px 24px rgba(27,143,111,.18);}'
-            . '.btn-secondary{background:#edf3ee;color:#17352d;border-color:rgba(27,143,111,.2);}'
-            . '@media (max-width:640px){.topbar{flex-direction:column;align-items:flex-start;}.grid{grid-template-columns:1fr;}.total{flex-direction:column;align-items:flex-start;}.actions{flex-direction:column;}.btn{width:100%;}}'
-            . '</style></head><body>'
-            . '<div class="wrap">'
-            . '<div class="card">'
-            . '<div class="topbar">'
-            . '<div>'
-            . '<div class="eyebrow">Comprobante de Pago</div>'
-            . '<div class="ref">' . $reference . '</div>'
-            . '</div>'
-            . '<div class="status">PAGADO</div>'
-            . '</div>'
-            . '<div class="content">'
-            . '<div class="summary">'
-            . '<div class="summary-title">Resumen del pago</div>'
-            . '<div class="grid">'
-            . '<div class="item"><div class="k">Método</div><div class="v">Tarjeta ' . $cardLast4 . '</div></div>'
-            . '<div class="item"><div class="k">Transacción</div><div class="v">' . $transactionId . '</div></div>'
-            . '<div class="item"><div class="k">Fecha</div><div class="v">' . e($now) . '</div></div>'
-            . '<div class="item"><div class="k">Contacto</div><div class="v">' . $email . '</div></div>'
-            . '</div>'
-            . '</div>'
-            . '<div class="total">'
-            . '<div class="total-label">Total pagado</div>'
-            . '<div class="total-amount">BOB ' . e($amount) . '</div>'
-            . '</div>'
-            . '</div>'
-            . '<div class="footer">'
-            . '<p>Gracias por su compra. Conserve este comprobante como respaldo de su transacción.</p>'
-            . '<div class="actions">'
-            . '<button class="btn btn-primary" onclick="window.print()">Imprimir comprobante</button>'
-            . '<a class="btn btn-secondary" href="' . $homeUrl . '">Volver al inicio</a>'
-            . '</div>'
-            . '</div>'
-            . '</div>'
-            . '</div>'
-            . '</body></html>';
+        return view('payment.invoice', [
+            'reference' => $booking->booking_code ?? '—',
+            'transactionId' => $paymentResult['id'] ?? '—',
+            'cardLast4' => $cardLast4,
+            'paidAt' => now()->format('d/m/Y H:i'),
+            'email' => $paymentData['billing_email'] ?? ($booking->contact_email ?? '—'),
+            'currency' => 'BOB',
+            'amount' => number_format((float) ($booking->total_amount ?? 0), 2, ',', '.'),
+            'homeUrl' => $this->resolveHomeUrlFromCustomerUrl($paymentData),
+        ])->render();
     }
 
     private function render_error_html(string $title, string $reason, string $errorCode, string $bookingCode, ?string $homeUrl = null): string
     {
-        $reference = e($bookingCode ?? '—');
-        $homeUrl = is_string($homeUrl) && trim($homeUrl) !== '' ? e($homeUrl) : '#';
-
-        return '<!DOCTYPE html>'
-            . '<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>' . e($title) . '</title>'
-            . '<style>'
-            . ':root{--bg:#fff7f7;--card:#ffffff;--danger:#d94d4d;--danger-deep:#a63232;--danger-soft:#fff1f1;--text:#1f2937;--muted:#64748b;--line:#f3d7d7;--shadow:0 28px 60px rgba(127,29,29,.12);}'
-            . '*{box-sizing:border-box;margin:0;padding:0;}'
-            . 'body{font-family:"Segoe UI",Tahoma,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:linear-gradient(180deg,#fff8f8 0%,#fff3f3 100%);color:var(--text);}'
-            . '.card{background:rgba(255,255,255,.9);border:1px solid rgba(148,163,184,.18);border-radius:26px;padding:28px 26px;max-width:560px;width:100%;box-shadow:var(--shadow);}'
-            . '.badge{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;margin:0 auto 18px;background:var(--danger-soft);color:var(--danger);font-size:36px;font-weight:800;box-shadow:inset 0 0 0 1px rgba(185,28,28,.12);}'
-            . '.title{font-size:clamp(2rem,4vw,2.8rem);font-weight:800;line-height:1.1;letter-spacing:-.05em;text-align:center;color:var(--danger-deep);margin-bottom:10px;}'
-            . '.reference{font-size:14px;text-align:center;color:var(--muted);margin-bottom:20px;}'
-            . '.reference strong{color:var(--text);}'
-            . '.reason{background:linear-gradient(180deg,#fffaf9,#fff4f4);border:1px solid var(--line);border-radius:16px;padding:18px 18px;color:#374151;line-height:1.7;font-size:15px;}'
-            . '.reason strong{color:var(--text);}'
-            . '.code{margin-top:18px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}'
-            . '.code span{display:inline-block;padding:8px 12px;border-radius:999px;background:#fff3f3;border:1px solid var(--line);color:var(--danger-deep);}'
-            . '.actions{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:22px;}'
-            . '.btn{display:inline-flex;align-items:center;justify-content:center;padding:16px 24px;border-radius:12px;text-decoration:none;font-weight:800;font-size:15px;border:1px solid transparent;cursor:pointer;transition:transform .2s ease, box-shadow .2s ease;min-width:220px;}'
-            . '.btn:hover{transform:translateY(-1px);}'
-            . '.btn-secondary{background:#edf3ee;color:#17352d;border-color:rgba(27,143,111,.2);box-shadow:0 12px 24px rgba(27,143,111,.12);}'
-            . '@media (max-width:640px){.card{padding:22px 18px;}.btn{width:100%;min-width:unset;}}'
-            . '</style></head>'
-            . '<body><div class="card">'
-            . '<div class="badge">!</div>'
-            . '<div class="title">' . e($title) . '</div>'
-            . '<div class="reference">Referencia: <strong>' . $reference . '</strong></div>'
-            . '<div class="reason"><strong>Motivo:</strong> ' . e($reason) . '</div>'
-            . '<div class="code"><span>' . e($errorCode) . '</span></div>'
-            . '<div class="actions"><a class="btn btn-secondary" href="' . $homeUrl . '">Volver al inicio</a></div>'
-            . '</div></body></html>';
+        return view('payment.error', [
+            'title' => $title,
+            'reason' => $reason,
+            'errorCode' => $errorCode,
+            'reference' => $bookingCode !== '' ? $bookingCode : '—',
+            'homeUrl' => is_string($homeUrl) && trim($homeUrl) !== '' ? $homeUrl : '#',
+        ])->render();
     }
 
     private function render_collection_html(string $code, string $reference_id, string $accessToken, ?string $url, $context): Response
