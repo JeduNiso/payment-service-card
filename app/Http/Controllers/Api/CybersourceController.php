@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Booking;
-use App\Services\Commerce\CommerceNotificationService;
 use App\Services\CyberSource\CyberSourceService;
 use App\Services\Payments\PaymentPersistenceService;
 use App\Services\Payments\PaymentService;
@@ -290,11 +289,14 @@ class CybersourceController extends PaymentProviderController
         $this->persistPaymentRecord($code, $paymentData, $enrollmentData, $customerUrl, 3);
 
         try {
-            $notificationResult = app(CommerceNotificationService::class)->notifyPaymentError($paymentData, $enrollmentData, '3ds_authentication_failed');
-            logger()->info('Merchant error notification sent for 3DS failure', [
-                'code' => $code,
-                'notification' => $notificationResult,
-            ]);
+            $this->notifyMerchantWithUserToken(
+                $paymentData,
+                'ERROR',
+                $booking->booking_code,
+                (float) ($paymentData['amount'] ?? 0),
+                (string) ($paymentData['currency'] ?? 'BOB'),
+                '3ds_authentication_failed'
+            );
         } catch (Throwable $e) {
             logger()->warning('Merchant error notification failed for 3DS failure', [
                 'code' => $code,
@@ -382,11 +384,13 @@ class CybersourceController extends PaymentProviderController
                 $this->persistSuccessfulPayment($code, $paymentData, $paymentResult);
 
                 try {
-                    $notificationResult = app(CommerceNotificationService::class)->notifyPaymentSuccess($paymentData, $paymentResult);
-                    logger()->info('Merchant success notification sent', [
-                        'code' => $code,
-                        'notification' => $notificationResult,
-                    ]);
+                    $this->notifyMerchantWithUserToken(
+                        $paymentData,
+                        'AUTHORIZED',
+                        $booking->booking_code,
+                        (float) ($paymentData['amount'] ?? 0),
+                        (string) ($paymentData['currency'] ?? 'BOB')
+                    );
                 } catch (Throwable $e) {
                     logger()->warning('Merchant success notification failed', [
                         'code' => $code,
@@ -413,11 +417,14 @@ class CybersourceController extends PaymentProviderController
                 $this->persistPaymentRecord($code, $paymentData, $paymentResult, $customerUrl, 3);
 
                 try {
-                    $notificationResult = app(CommerceNotificationService::class)->notifyPaymentError($paymentData, $paymentResult, 'payment_not_authorized');
-                    logger()->info('Merchant error notification sent', [
-                        'code' => $code,
-                        'notification' => $notificationResult,
-                    ]);
+                    $this->notifyMerchantWithUserToken(
+                        $paymentData,
+                        'ERROR',
+                        $booking->booking_code,
+                        (float) ($paymentData['amount'] ?? 0),
+                        (string) ($paymentData['currency'] ?? 'BOB'),
+                        'payment_not_authorized'
+                    );
                 } catch (Throwable $e) {
                     logger()->warning('Merchant error notification failed', [
                         'code' => $code,
