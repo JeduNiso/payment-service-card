@@ -33,6 +33,7 @@ class User extends Authenticatable
         'date_joined',
         'last_login',
         'customer_url',
+        'merchant_notification_api_key',
     ];
 
     /**

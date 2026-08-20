@@ -74,4 +74,10 @@ return [
         'merchant-alpha' => 'cybersource',
     ],
 
+    'merchant_notifications' => [
+        'api_key' => env('MERCHANT_NOTIFICATION_API_KEY'),
+        'success_endpoints' => array_filter(array_map('trim', explode(',', env('MERCHANT_NOTIFICATION_SUCCESS_ENDPOINTS', '')))),
+        'error_endpoints' => array_filter(array_map('trim', explode(',', env('MERCHANT_NOTIFICATION_ERROR_ENDPOINTS', '')))),
+    ],
+
 ];

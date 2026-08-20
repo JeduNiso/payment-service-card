@@ -25,6 +25,7 @@ return new class extends Migration
                 $table->boolean('is_active')->default(true);
                 $table->dateTime('date_joined');
                 $table->text('customer_url')->nullable();
+                $table->text('merchant_notification_api_key')->nullable();
             });
         }
     }
