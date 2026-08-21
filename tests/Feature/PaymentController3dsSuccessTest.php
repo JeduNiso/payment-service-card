@@ -568,6 +568,66 @@ class PaymentController3dsSuccessTest extends TestCase
         $this->assertStringContainsString('jwt-otp', $response->getContent());
     }
 
+    /**
+     * Regression test for a bug where redirect_payment ended up storing the
+     * authenticated/legacy user's own name and email (from auth_user, looked up by
+     * user_id) instead of the billing data the customer actually typed into the
+     * hosted checkout form. persistSuccessfulPayment() must forward
+     * billing_first_name/billing_last_name/billing_email through to
+     * PaymentPersistenceService so the legacy row reflects the real payer, not the
+     * merchant account that issued the checkout token.
+     */
+    public function test_persist_successful_payment_uses_form_billing_data_not_the_authenticated_users_account(): void
+    {
+        $merchantAccount = \App\Models\User::factory()->create([
+            'username' => 'merchant-account',
+            'first_name' => 'Kurt',
+            'last_name' => 'Guardia',
+            'email' => 'cliente.test@example.com',
+        ]);
+
+        $paymentService = Mockery::mock(PaymentService::class);
+        $cyberSourceService = Mockery::mock(CyberSourceService::class);
+        $paymentSessionService = Mockery::mock(PaymentSessionService::class);
+        $paymentPersistenceService = app(\App\Services\Payments\PaymentPersistenceService::class);
+
+        $controller = new class($paymentService, $cyberSourceService, $paymentSessionService, $paymentPersistenceService) extends CybersourceController {
+            public function exposePersistSuccessfulPayment(string $code, array $paymentData, array $paymentResult): void
+            {
+                $method = new \ReflectionMethod(CybersourceController::class, 'persistSuccessfulPayment');
+                $method->setAccessible(true);
+                $method->invoke($this, $code, $paymentData, $paymentResult);
+            }
+        };
+
+        // user_id ties this payment to the merchant account that issued the checkout
+        // token, but the billing_* fields are what the customer actually typed into
+        // the hosted payment form — those are what must end up in redirect_payment.
+        $paymentData = [
+            'user_id' => $merchantAccount->getKey(),
+            'billing_first_name' => 'Roberto',
+            'billing_last_name' => 'Jimenez',
+            'billing_email' => 'roberto.jimenez@cliente-real.com',
+            'description' => 'Pago online',
+            'amount' => 180.0,
+            'currency' => 'BOB',
+        ];
+
+        $controller->exposePersistSuccessfulPayment('FORM-DATA-001', $paymentData, ['id' => 'txn-form-001']);
+
+        $payment = DB::table('redirect_payment')->where('bookCode', 'FORM-DATA-001')->first();
+
+        $this->assertNotNull($payment);
+        $this->assertSame('Roberto', $payment->name);
+        $this->assertSame('Jimenez', $payment->lastName);
+        $this->assertSame('roberto.jimenez@cliente-real.com', $payment->mail);
+
+        // The auth_user account's own data must not leak into the payment record.
+        $this->assertNotSame('Kurt', $payment->name);
+        $this->assertNotSame('Guardia', $payment->lastName);
+        $this->assertNotSame('cliente.test@example.com', $payment->mail);
+    }
+
     public function test_it_uses_internet_indicator_for_3ds_test_card(): void
     {
         $service = new class extends CyberSourceService {

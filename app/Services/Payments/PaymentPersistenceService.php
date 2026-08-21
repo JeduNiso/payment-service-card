@@ -183,6 +183,11 @@ class PaymentPersistenceService
                 'customer_url' => $data['customer_url'] ?? $data['redirect_url'] ?? null,
                 'transaction_id' => $data['transaction_id'] ?? $data['reference'] ?? null,
                 'reference' => $data['reference'] ?? $data['transaction_id'] ?? null,
+                'billing_first_name' => $data['billing_first_name'] ?? null,
+                'billing_last_name' => $data['billing_last_name'] ?? null,
+                'billing_email' => $data['billing_email'] ?? null,
+                'email' => $data['email'] ?? null,
+                'description' => $data['description'] ?? null,
             ]);
         }
 

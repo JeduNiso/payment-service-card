@@ -555,6 +555,10 @@ class CybersourceController extends PaymentProviderController
                 'transaction_id' => $paymentResult['id'] ?? $paymentResult['transactionId'] ?? null,
                 'reference' => $paymentResult['id'] ?? $paymentResult['transactionId'] ?? null,
                 'user_id' => $userId,
+                'billing_first_name' => $paymentData['billing_first_name'] ?? null,
+                'billing_last_name' => $paymentData['billing_last_name'] ?? null,
+                'billing_email' => $paymentData['billing_email'] ?? null,
+                'description' => $paymentData['description'] ?? null,
             ]
         );
     }
@@ -827,6 +831,10 @@ class CybersourceController extends PaymentProviderController
             'customer_url' => $customerUrl,
             'transaction_id' => $transactionId,
             'reference' => $transactionId,
+            'billing_first_name' => $paymentData['billing_first_name'] ?? null,
+            'billing_last_name' => $paymentData['billing_last_name'] ?? null,
+            'billing_email' => $paymentData['billing_email'] ?? null,
+            'description' => $paymentData['description'] ?? null,
         ];
 
         try {
