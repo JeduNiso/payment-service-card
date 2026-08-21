@@ -544,6 +544,14 @@ class CybersourceController extends PaymentProviderController
             $paymentData['cvv'] = CyberSourceSanitizer::maskCvv($paymentData['cvv']);
         }
 
+        if (isset($paymentData['expiry_month'])) {
+            $paymentData['expiry_month'] = '**';
+        }
+
+        if (isset($paymentData['expiry_year'])) {
+            $paymentData['expiry_year'] = '****';
+        }
+
         return $paymentData;
     }
 
