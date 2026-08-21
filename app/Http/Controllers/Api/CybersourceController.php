@@ -104,7 +104,7 @@ class CybersourceController extends PaymentProviderController
 
         cache()->put("3ds_ref_{$code}", $reference_id, now()->addMinutes(10));
 
-        $sessionToken = $this->paymentSessionService->store($code, [
+        $sessionPayload = [
             'context' => $context,
             'card_number' => $cardNumber,
             'expiry_month' => str_pad((string) $data['expiry_month'], 2, '0', STR_PAD_LEFT),
@@ -128,7 +128,14 @@ class CybersourceController extends PaymentProviderController
             'description' => $paymentSession['description'] ?? null,
             'auto_redirect' => $paymentSession['auto_redirect'] ?? false,
             'redirect_url' => $paymentSession['redirect_url'] ?? null,
-        ], 15);
+        ];
+
+        // TEMP DEBUG — remove after reviewing the payload sent to PaymentSessionService.
+        // card_number/cvv are masked via sanitizePaymentDataForLog(); still remove this
+        // once the mapping is confirmed, per docs/SECURITY.md.
+        logger()->info('TEMP DEBUG - pay() session payload sent to PaymentSessionService', $this->sanitizePaymentDataForLog($sessionPayload));
+
+        $sessionToken = $this->paymentSessionService->store($code, $sessionPayload, 15);
 
         cache()->put("payment_token_for_code:{$code}", $sessionToken, now()->addMinutes(15));
         cache()->put("payment_reference_id_for_code:{$code}", $reference_id, now()->addMinutes(15));
