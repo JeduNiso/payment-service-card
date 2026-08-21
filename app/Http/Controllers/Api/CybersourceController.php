@@ -523,8 +523,8 @@ class CybersourceController extends PaymentProviderController
 
 
     /**
-     * Never log a payment session payload as-is — it carries the full PAN and CVV.
-     * Mask those two fields before handing the array to logger(); everything else
+     * Never log a payment session payload as-is — it carries the full PAN, CVV, and
+     * expiry. Mask those fields before handing the array to logger(); everything else
      * (billing info, amounts) stays untouched for debuggability.
      */
     private function sanitizePaymentDataForLog(array $paymentData): array
@@ -535,6 +535,14 @@ class CybersourceController extends PaymentProviderController
 
         if (isset($paymentData['cvv']) && is_string($paymentData['cvv'])) {
             $paymentData['cvv'] = CyberSourceSanitizer::maskCvv($paymentData['cvv']);
+        }
+
+        if (isset($paymentData['expiry_month'])) {
+            $paymentData['expiry_month'] = '**';
+        }
+
+        if (isset($paymentData['expiry_year'])) {
+            $paymentData['expiry_year'] = '****';
         }
 
         return $paymentData;
